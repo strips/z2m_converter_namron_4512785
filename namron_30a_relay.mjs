@@ -737,18 +737,18 @@ export default [
         // Add light polling to keep values fresh if the device doesn't report often
         onEvent: async (type, data, device) => {
             // eslint-disable-next-line no-console
-            if (type === 'start') console.warn('[Namron4512785] converter loaded (start event)');
-            // eslint-disable-next-line no-console
-            if (type === 'deviceAnnounce') console.warn(`[Namron4512785] deviceAnnounce for ${device?.ieeeAddr}`);
+            console.warn(`[Namron4512785] onEvent: type=${type} device=${device?.ieeeAddr}`);
             const key = device?.ieeeAddr;
             if (!key) return;
             const g = globalThis;
             g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
-            if (type === 'start' || type === 'deviceAnnounce') {
-                if (g.__namron4512785_poll__.has(key)) return;
+            
+            // Start polling on ANY event except stop (start, deviceAnnounce, message, etc.)
+            if (type !== 'stop') {
+                if (g.__namron4512785_poll__.has(key)) return; // Already polling
                 const intervalMs = 60000; // 60s
                 // eslint-disable-next-line no-console
-                console.warn(`[Namron4512785] start polling ${key} every ${intervalMs/1000}s`);
+                console.warn(`[Namron4512785] START POLLING ${key} every ${intervalMs/1000}s (triggered by ${type})`);
                 const timer = setInterval(async () => {
                     try {
                         const ep = findBestEndpoint(device);
@@ -771,9 +771,13 @@ export default [
                 }, intervalMs);
                 g.__namron4512785_poll__.set(key, timer);
             }
+            
             if (type === 'stop') {
                 const timer = g.__namron4512785_poll__.get(key);
-                if (timer) clearInterval(timer);
+                if (timer) {
+                    clearInterval(timer);
+                    console.warn(`[Namron4512785] STOPPED polling ${key}`);
+                }
                 g.__namron4512785_poll__.delete(key);
             }
         },

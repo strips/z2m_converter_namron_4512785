@@ -300,12 +300,9 @@ const fzLocal = {
 const tzLocal = {
     get_attribute: {
         key: [
+            // Read-only attributes (GET only)
             'device_temperature', 'ntc1_temperature', 'ntc2_temperature', 'water_sensor',
             'voltage', 'current', 'power', 'energy',
-            'ntc1_sensor_type', 'ntc2_sensor_type', 'water_alarm_relay_action',
-            'ntc1_operation_mode', 'ntc2_operation_mode', 'ntc1_relay_auto_temp',
-            'ntc2_relay_auto_temp', 'override_option', 'ntc1_calibration',
-            'ntc2_calibration', 'ntc1_temp_hysteresis', 'ntc2_temp_hysteresis',
             'water_condition_alarm', 'ntc_condition_alarm', 'is_execute_condition',
         ],
         convertGet: async (entity, key) => {
@@ -376,6 +373,44 @@ const tzLocal = {
                         k = pick(res, [0x0000, 'currentSummationDelivered', 'currentSummDelivered']); raw = res?.[k];
                         if (typeof raw === 'number') { val = Math.round((raw/1000)*1000)/1000; return {state: {energy: val}}; }
                         break;
+                    case 'water_condition_alarm':
+                        res = await entity.read(PRIVATE_CLUSTER_ID, [0x000E]);
+                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        k = pick(res, [0x000E, 'waterConditionAlarm']); raw = res?.[k];
+                        if (raw != null) return {state: {water_condition_alarm: !!raw}};
+                        break;
+                    case 'ntc_condition_alarm':
+                        res = await entity.read(PRIVATE_CLUSTER_ID, [0x000F]);
+                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        k = pick(res, [0x000F, 'ntcConditionAlarm']); raw = res?.[k];
+                        if (raw != null) return {state: {ntc_condition_alarm: !!raw}};
+                        break;
+                    case 'is_execute_condition':
+                        res = await entity.read(PRIVATE_CLUSTER_ID, [0x0010]);
+                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        k = pick(res, [0x0010, 'isExecuteCondition']); raw = res?.[k];
+                        if (raw != null) return {state: {is_execute_condition: !!raw}};
+                        break;
+                }
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.warn(`[Namron4512785] get ${key} failed: ${err}`);
+            }
+        },
+    },
+    set_private_attribute: {
+        key: [
+            'ntc1_sensor_type', 'ntc2_sensor_type', 'water_alarm_relay_action',
+            'ntc1_operation_mode', 'ntc2_operation_mode', 'ntc1_relay_auto_temp',
+            'ntc2_relay_auto_temp', 'override_option', 'ntc1_calibration',
+            'ntc2_calibration', 'ntc1_temp_hysteresis', 'ntc2_temp_hysteresis',
+        ],
+        convertGet: async (entity, key, meta) => {
+            // eslint-disable-next-line no-console
+            console.warn(`[Namron4512785] get ${key}`);
+            try {
+                let res; let k; let raw; let val;
+                switch (key) {
                     case 'ntc1_sensor_type':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0001]);
                         console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
@@ -452,38 +487,12 @@ const tzLocal = {
                         k = pick(res, [0x000D, 'ntc2TempHysterisis']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc2_temp_hysteresis: raw}};
                         break;
-                    case 'water_condition_alarm':
-                        res = await entity.read(PRIVATE_CLUSTER_ID, [0x000E]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
-                        k = pick(res, [0x000E, 'waterConditionAlarm']); raw = res?.[k];
-                        if (raw != null) return {state: {water_condition_alarm: !!raw}};
-                        break;
-                    case 'ntc_condition_alarm':
-                        res = await entity.read(PRIVATE_CLUSTER_ID, [0x000F]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
-                        k = pick(res, [0x000F, 'ntcConditionAlarm']); raw = res?.[k];
-                        if (raw != null) return {state: {ntc_condition_alarm: !!raw}};
-                        break;
-                    case 'is_execute_condition':
-                        res = await entity.read(PRIVATE_CLUSTER_ID, [0x0010]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
-                        k = pick(res, [0x0010, 'isExecuteCondition']); raw = res?.[k];
-                        if (raw != null) return {state: {is_execute_condition: !!raw}};
-                        break;
                 }
             } catch (err) {
                 // eslint-disable-next-line no-console
                 console.warn(`[Namron4512785] get ${key} failed: ${err}`);
             }
         },
-    },
-    set_private_attribute: {
-        key: [
-            'ntc1_sensor_type', 'ntc2_sensor_type', 'water_alarm_relay_action',
-            'ntc1_operation_mode', 'ntc2_operation_mode', 'ntc1_relay_auto_temp',
-            'ntc2_relay_auto_temp', 'override_option', 'ntc1_calibration',
-            'ntc2_calibration', 'ntc1_temp_hysteresis', 'ntc2_temp_hysteresis',
-        ],
         convertSet: async (entity, key, value, meta) => {
             // eslint-disable-next-line no-console
             console.warn(`[Namron4512785] set ${key} -> ${value}`);

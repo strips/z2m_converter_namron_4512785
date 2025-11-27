@@ -549,11 +549,17 @@ const tzLocal = {
 // Export as array per docs
 export default [
     {
-        zigbeeModel: ['4512785'],
+        zigbeeModel: ['4512785', 'MeterSmartPlug'],  // Add manufacturer's internal model name
         model: '4512785',
         vendor: 'Namron AS',
         description: 'Namron Zigbee 30A relay (numeric-ID external converter)',
-        extend: [m.onOff({powerOnBehavior: false}), m.electricityMeter()],
+        // Alternative fingerprint matching
+        fingerprint: [
+            {modelID: '4512785', manufacturerName: 'Namron AS'},
+            {modelID: '4512785', manufacturerName: 'RedBox'},
+            {modelID: 'MeterSmartPlug', manufacturerName: 'RedBox'},
+        ],
+        extend: [m.onOff({powerOnBehavior: false})],
         fromZigbee: [
             // Parsers (on_off_num deliberately omitted - modernExtend handles it)
             fzLocal.device_temp_num,
@@ -571,6 +577,12 @@ export default [
         ],
     toZigbee: [tzLocal.get_attribute, tzLocal.set_private_attribute],
         exposes: [
+            // Switch and electrical - these need to be explicit to avoid modernExtend conflicts
+            e.switch(),
+            e.voltage().withAccess(ea.STATE | ea.STATE_GET),
+            e.current().withAccess(ea.STATE | ea.STATE_GET),
+            e.power().withAccess(ea.STATE | ea.STATE_GET),
+            e.energy().withAccess(ea.STATE | ea.STATE_GET),
             // e.switch() - provided by modernExtend onOff
             e.numeric('device_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('Internal device temperature'),
             e.numeric('ntc1_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC1 temperature'),
@@ -580,10 +592,10 @@ export default [
             e.numeric('current', ea.STATE | ea.STATE_GET).withUnit('A').withDescription('RMS current'),
             e.numeric('power', ea.STATE | ea.STATE_GET).withUnit('W').withDescription('Active power'),
             e.numeric('energy', ea.STATE | ea.STATE_GET).withUnit('kWh').withDescription('Total energy, kWh'),
-            e.enum('ntc1_sensor_type', ea.STATE_SET | ea.STATE_GET, Object.keys(NTC_TYPE_MAP))
+            e.enum('ntc1_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))
                 .withDescription('Select NTC type for probe #1 (set r1–r6 to enable reporting).'),
-            e.enum('ntc2_sensor_type', ea.STATE_SET | ea.STATE_GET, Object.keys(NTC_TYPE_MAP))
-                .withDescription('Select NTC type for probe #2 (set r1–r6 to enable reporting).'),
+            e.enum('ntc2_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))
+                .withDescription('Select NTC type for probe #2 (set r1–r6 to enable reporting).').
             e.enum('water_alarm_relay_action', ea.STATE_SET | ea.STATE_GET, Object.keys(WATER_RELAY_ACTION_MAP))
                 .withDescription('Relay behaviour when water alarm triggers.'),
             e.enum('ntc1_operation_mode', ea.STATE_SET | ea.STATE_GET, Object.keys(NTC1_OPERATION_MAP))

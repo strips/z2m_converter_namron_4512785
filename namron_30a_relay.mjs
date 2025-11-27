@@ -4,8 +4,8 @@
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
 import * as m from 'zigbee-herdsman-converters/lib/modernExtend';
-import tstype from 'zigbee-herdsman/dist/zspec/zcl/definition/tstype.js';
-const {DataType} = tstype;
+import zcl from 'zigbee-herdsman/dist/zspec/zcl/index.js';
+const {DataType} = zcl;
 
 const e = exposes.presets;
 const ea = exposes.access;

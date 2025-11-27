@@ -753,12 +753,17 @@ export default [
                     try {
                         const ep = findBestEndpoint(device);
                         if (!ep) return;
-                        // Read measurements; modernExtend fz should parse attributeReports, but this also returns directly
+                        // eslint-disable-next-line no-console
+                        console.warn(`[Namron4512785] === POLLING CYCLE START ===`);
+                        // Read measurements and log results to verify polling works
+                        const tempRes = await ep.read('msTemperatureMeasurement', [0x0000]);
+                        console.warn(`[Namron4512785] POLL ntc1 result:`, JSON.stringify(tempRes));
+                        const waterRes = await ep.read(0x04E0, [0x0000, 0x0003]);
+                        console.warn(`[Namron4512785] POLL ntc2/water result:`, JSON.stringify(waterRes));
                         await ep.read('haElectricalMeasurement', [0x0505, 0x0508, 0x050B]);
                         await ep.read('seMetering', [0x0000]);
                         await ep.read('genDeviceTempCfg', [0x0000]);
-                        await ep.read('msTemperatureMeasurement', [0x0000]);
-                        await ep.read(0x04E0, [0x0000, 0x0003]);
+                        console.warn(`[Namron4512785] === POLLING CYCLE END ===`);
                     } catch (e) {
                         // eslint-disable-next-line no-console
                         console.warn(`[Namron4512785] poll error: ${e}`);

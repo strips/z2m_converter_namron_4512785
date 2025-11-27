@@ -1,0 +1,4 @@
+1. Mirror annotations into CJS snippet ✅
+2. Extend private cluster parsing & exposures 🔄
+3. Add toZigbee setters for all private attrs 🔄
+4. Wire refresh/polling + documentation 🔄

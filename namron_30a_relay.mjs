@@ -549,16 +549,10 @@ const tzLocal = {
 // Export as array per docs
 export default [
     {
-        zigbeeModel: ['4512785', 'MeterSmartPlug'],  // Add manufacturer's internal model name
+        zigbeeModel: ['4512785'],
         model: '4512785',
         vendor: 'Namron AS',
         description: 'Namron Zigbee 30A relay (numeric-ID external converter)',
-        // Alternative fingerprint matching
-        fingerprint: [
-            {modelID: '4512785', manufacturerName: 'Namron AS'},
-            {modelID: '4512785', manufacturerName: 'RedBox'},
-            {modelID: 'MeterSmartPlug', manufacturerName: 'RedBox'},
-        ],
         extend: [m.onOff({powerOnBehavior: false})],
         fromZigbee: [
             // Parsers (on_off_num deliberately omitted - modernExtend handles it)
@@ -595,7 +589,7 @@ export default [
             e.enum('ntc1_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))
                 .withDescription('Select NTC type for probe #1 (set r1–r6 to enable reporting).'),
             e.enum('ntc2_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))
-                .withDescription('Select NTC type for probe #2 (set r1–r6 to enable reporting).').
+                .withDescription('Select NTC type for probe #2 (set r1–r6 to enable reporting).'),
             e.enum('water_alarm_relay_action', ea.STATE_SET | ea.STATE_GET, Object.keys(WATER_RELAY_ACTION_MAP))
                 .withDescription('Relay behaviour when water alarm triggers.'),
             e.enum('ntc1_operation_mode', ea.STATE_SET | ea.STATE_GET, Object.keys(NTC1_OPERATION_MAP))

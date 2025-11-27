@@ -742,9 +742,21 @@ export default [
         },
         // Add light polling to keep values fresh if the device doesn't report often
         onEvent: async (type, data, device) => {
+            // Z2M 2.6+ may pass event as object: {type, data, device}
+            let eventType = type;
+            let eventData = data;
+            let eventDevice = device;
+            
+            // Check if first arg is an object with type/data/device properties
+            if (typeof type === 'object' && type !== null && 'type' in type) {
+                eventType = type.type;
+                eventData = type.data;
+                eventDevice = type.device;
+            }
+            
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] *** onEvent CALLED *** type=${type} device=${device?.ieeeAddr || 'NO_DEVICE'}`);
-            const key = device?.ieeeAddr;
+            console.warn(`[Namron4512785] *** onEvent CALLED *** type=${eventType} device=${eventDevice?.ieeeAddr || 'NO_DEVICE'}`);
+            const key = eventDevice?.ieeeAddr;
             if (!key) {
                 console.warn('[Namron4512785] onEvent: no device ieeeAddr, skipping');
                 return;
@@ -753,17 +765,17 @@ export default [
             g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
             
             // Start polling on ANY event except stop (start, deviceAnnounce, message, etc.)
-            if (type !== 'stop') {
+            if (eventType !== 'stop') {
                 if (g.__namron4512785_poll__.has(key)) {
                     console.warn(`[Namron4512785] Already polling ${key}, skipping`);
                     return; // Already polling
                 }
                 const intervalMs = 60000; // 60s
                 // eslint-disable-next-line no-console
-                console.warn(`[Namron4512785] *** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${type})`);
+                console.warn(`[Namron4512785] *** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${eventType})`);
                 const timer = setInterval(async () => {
                     try {
-                        const ep = findBestEndpoint(device);
+                        const ep = findBestEndpoint(eventDevice);
                         if (!ep) return;
                         // eslint-disable-next-line no-console
                         console.warn(`[Namron4512785] === POLLING CYCLE START ===`);

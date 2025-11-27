@@ -502,51 +502,51 @@ const tzLocal = {
             switch (key) {
                 case 'ntc1_sensor_type':
                     ({raw: payload, text: result} = parseEnumValue(value, NTC_TYPE_MAP, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0001: {value: payload, type: DataType.enum8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0001: {value: payload, type: DataType.ENUM8}});
                     return {state: {ntc1_sensor_type: result}};
                 case 'ntc2_sensor_type':
                     ({raw: payload, text: result} = parseEnumValue(value, NTC_TYPE_MAP, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0002: {value: payload, type: DataType.enum8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0002: {value: payload, type: DataType.ENUM8}});
                     return {state: {ntc2_sensor_type: result}};
                 case 'water_alarm_relay_action':
                     ({raw: payload, text: result} = parseEnumValue(value, WATER_RELAY_ACTION_MAP, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0006: {value: payload, type: DataType.enum8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0006: {value: payload, type: DataType.ENUM8}});
                     return {state: {water_alarm_relay_action: result}};
                 case 'ntc1_operation_mode':
                     ({raw: payload, text: result} = parseEnumValue(value, NTC1_OPERATION_MAP, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0007: {value: payload, type: DataType.enum8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0007: {value: payload, type: DataType.ENUM8}});
                     return {state: {ntc1_operation_mode: result}};
                 case 'ntc2_operation_mode':
                     ({raw: payload, text: result} = parseEnumValue(value, NTC2_OPERATION_MAP, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0008: {value: payload, type: DataType.enum8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0008: {value: payload, type: DataType.ENUM8}});
                     return {state: {ntc2_operation_mode: result}};
                 case 'ntc1_relay_auto_temp':
                     ({raw: payload, text: result} = parseNumeric(value, key, 100));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0009: {value: payload, type: DataType.int16}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0009: {value: payload, type: DataType.INT16}});
                     return {state: {ntc1_relay_auto_temp: result}};
                 case 'ntc2_relay_auto_temp':
                     ({raw: payload, text: result} = parseNumeric(value, key, 100));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x000A: {value: payload, type: DataType.int16}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x000A: {value: payload, type: DataType.INT16}});
                     return {state: {ntc2_relay_auto_temp: result}};
                 case 'override_option':
                     ({raw: payload, text: result} = parseEnumValue(value, OVERRIDE_OPTION_MAP, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x000B: {value: payload, type: DataType.enum8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x000B: {value: payload, type: DataType.ENUM8}});
                     return {state: {override_option: result}};
                 case 'ntc1_calibration':
                     ({raw: payload, text: result} = parseNumeric(value, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0004: {value: payload, type: DataType.int8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0004: {value: payload, type: DataType.INT8}});
                     return {state: {ntc1_calibration: result}};
                 case 'ntc2_calibration':
                     ({raw: payload, text: result} = parseNumeric(value, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x0005: {value: payload, type: DataType.int8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x0005: {value: payload, type: DataType.INT8}});
                     return {state: {ntc2_calibration: result}};
                 case 'ntc1_temp_hysteresis':
                     ({raw: payload, text: result} = parseNumeric(value, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x000C: {value: payload, type: DataType.int8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x000C: {value: payload, type: DataType.INT8}});
                     return {state: {ntc1_temp_hysteresis: result}};
                 case 'ntc2_temp_hysteresis':
                     ({raw: payload, text: result} = parseNumeric(value, key));
-                    await entity.write(PRIVATE_CLUSTER_ID, {0x000D: {value: payload, type: DataType.int8}});
+                    await entity.write(PRIVATE_CLUSTER_ID, {0x000D: {value: payload, type: DataType.INT8}});
                     return {state: {ntc2_temp_hysteresis: result}};
                 default:
                     throw new Error(`[Namron4512785] unsupported set key ${key}`);

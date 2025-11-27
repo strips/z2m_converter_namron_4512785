@@ -555,11 +555,12 @@ export default [
         description: 'Namron Zigbee 30A relay (numeric-ID external converter)',
         extend: [m.onOff({powerOnBehavior: false}), m.electricityMeter()],
         fromZigbee: [
-            // Parsers
-            fzLocal.on_off_num,
+            // Parsers (on_off_num deliberately omitted - modernExtend handles it)
             fzLocal.device_temp_num,
             fzLocal.temp_measurement_num,
             fzLocal.private_04e0_num,
+            fzLocal.electrical_num,  // Supplement modernExtend for manual reads
+            fzLocal.metering_num,     // Supplement modernExtend for manual reads
             // Debuggers
             fzLocal.debug_0006,
             fzLocal.debug_0002,
@@ -570,7 +571,7 @@ export default [
         ],
     toZigbee: [tzLocal.get_attribute, tzLocal.set_private_attribute],
         exposes: [
-            e.switch(),
+            // e.switch() - provided by modernExtend onOff
             e.numeric('device_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('Internal device temperature'),
             e.numeric('ntc1_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC1 temperature'),
             e.numeric('ntc2_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC2 temperature'),
@@ -659,6 +660,28 @@ export default [
                 }]);
             } catch (err) { L.warn(`[Namron4512785] metering rpt failed: ${err}`); }
 
+            // CRITICAL: Configure reporting for private cluster 0x04E0 (NTC temps, water sensor)
+            // Without this, the device may not report temperature/water changes automatically
+            try {
+                await endpoint.configureReporting(0x04E0, [
+                    {
+                        attribute: 0x0000, // ntc2_temperature
+                        minimumReportInterval: 15,
+                        maximumReportInterval: 600,
+                        reportableChange: 10, // 0.1°C (raw is ×100)
+                    },
+                    {
+                        attribute: 0x0003, // water_sensor
+                        minimumReportInterval: 1,
+                        maximumReportInterval: 300,
+                        reportableChange: 1,
+                    },
+                ]);
+                L.info('[Namron4512785] configured reporting for private cluster 0x04E0');
+            } catch (err) { 
+                L.warn(`[Namron4512785] private cluster 0x04E0 reporting failed (may not be supported): ${err}`); 
+            }
+
             // Proactively read key attributes once to seed initial state
             const safeRead = async (cluster, attrs, label) => {
                 try {
@@ -673,8 +696,14 @@ export default [
             await safeRead('genDeviceTempCfg', [0x0000], 'genDeviceTempCfg:0x0000');
             await safeRead('msTemperatureMeasurement', [0x0000], 'msTemperatureMeasurement:0x0000');
             await safeRead('haElectricalMeasurement', [0x0505, 0x0508, 0x050B], 'haElectricalMeasurement:volt/curr/power');
-            // Private cluster may not support read; try anyway
-            await safeRead(0x04E0, [0x0000, 0x0003], '0x04E0:ntc2/water');
+            await safeRead('seMetering', [0x0000], 'seMetering:energy');
+            
+            // Private cluster 0x04E0: Read temps, water sensor, and CRITICAL config (NTC sensor types)
+            await safeRead(0x04E0, [0x0000, 0x0003], '0x04E0:ntc2_temp/water_sensor');
+            await safeRead(0x04E0, [0x0001, 0x0002], '0x04E0:ntc1_type/ntc2_type');
+            await safeRead(0x04E0, [0x0007, 0x0008], '0x04E0:ntc1_operation/ntc2_operation');
+            
+            L.info('[Namron4512785] IMPORTANT: Set ntc1_sensor_type and ntc2_sensor_type (r1-r6) to enable temperature reporting!');
         },
         // Add light polling to keep values fresh if the device doesn't report often
         onEvent: async (type, data, device) => {

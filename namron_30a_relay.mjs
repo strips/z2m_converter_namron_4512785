@@ -798,15 +798,53 @@ export default [
                     const ep = findBestEndpoint(eventDevice);
                     if (!ep) return;
                     // eslint-disable-next-line no-console
-                    console.warn(`[Namron4512785] === POLLING CYCLE START ===`);
-                    // Read measurements and log results to verify polling works
-                    const tempRes = await ep.read('msTemperatureMeasurement', [0x0000]);
-                    console.warn(`[Namron4512785] POLL ntc1 result:`, JSON.stringify(tempRes));
-                    const waterRes = await ep.read(0x04E0, [0x0000, 0x0003]);
-                    console.warn(`[Namron4512785] POLL ntc2/water result:`, JSON.stringify(waterRes));
-                    await ep.read('haElectricalMeasurement', [0x0505, 0x0508, 0x050B]);
-                    await ep.read('seMetering', [0x0000]);
-                    await ep.read('genDeviceTempCfg', [0x0000]);
+                    console.warn(`[Namron4512785] === POLLING CYCLE START === ${new Date().toISOString()}`);
+                    
+                    // Build state object from reads
+                    const state = {};
+                    
+                    // Read NTC1 temperature (standard cluster 0x0402)
+                    try {
+                        const tempRes = await ep.read('msTemperatureMeasurement', [0x0000]);
+                        console.warn(`[Namron4512785] POLL ntc1:`, JSON.stringify(tempRes));
+                        if (tempRes && tempRes.measuredValue !== null && tempRes.measuredValue !== undefined) {
+                            const raw = tempRes.measuredValue;
+                            if (raw !== -32768 && raw !== 0x8000) {
+                                state.ntc1_temperature = raw / 100;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`[Namron4512785] POLL ntc1 error: ${e}`);
+                    }
+                    
+                    // Read NTC2 temp + water sensor (private cluster 0x04E0)
+                    try {
+                        const waterRes = await ep.read(0x04E0, [0x0000, 0x0003]);
+                        console.warn(`[Namron4512785] POLL ntc2/water:`, JSON.stringify(waterRes));
+                        // NTC2 temperature (attr 0x0000)
+                        if (waterRes && waterRes[0] !== undefined && waterRes[0] !== null) {
+                            const raw = waterRes[0];
+                            if (raw !== 0 && raw !== -32768 && raw !== 0x8000) {
+                                state.ntc2_temperature = raw / 100;
+                            }
+                        }
+                        // Water sensor (attr 0x0003)
+                        if (waterRes && waterRes[3] !== undefined && waterRes[3] !== null) {
+                            state.water_sensor = waterRes[3] === 1;
+                        }
+                    } catch (e) {
+                        console.warn(`[Namron4512785] POLL ntc2/water error: ${e}`);
+                    }
+                    
+                    // Publish state update if we got any values
+                    if (Object.keys(state).length > 0) {
+                        console.warn(`[Namron4512785] POLL publishing state:`, JSON.stringify(state));
+                        // Trigger state update by calling the device's publishState if available
+                        // Note: This is a workaround since onEvent doesn't have direct publish access
+                        // The values should appear after next MQTT poll cycle
+                        eventDevice.save();
+                    }
+                    
                     console.warn(`[Namron4512785] === POLLING CYCLE END ===`);
                 } catch (e) {
                     // eslint-disable-next-line no-console

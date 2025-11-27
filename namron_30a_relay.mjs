@@ -649,6 +649,11 @@ export default [
         meta: {configureKey: 1},
         configure: async (device, coordinatorEndpoint, logger) => {
             const L = mkLogger(logger);
+            
+            // Log device identification info to help diagnose "Not supported" issue
+            L.warn(`[Namron4512785] DEVICE INFO: modelID="${device.modelID}" manufacturerName="${device.manufacturerName}" ieeeAddr=${device.ieeeAddr}`);
+            L.warn(`[Namron4512785] DEVICE INFO: endpoints=${device.endpoints.map(ep => ep.ID).join(',')}`);
+            
             const endpoint = findBestEndpoint(device);
             if (!endpoint) {
                 L.error('[Namron4512785] no endpoint available on device');
@@ -756,54 +761,59 @@ export default [
             
             // eslint-disable-next-line no-console
             console.warn(`[Namron4512785] *** onEvent CALLED *** type=${eventType} device=${eventDevice?.ieeeAddr || 'NO_DEVICE'}`);
-            const key = eventDevice?.ieeeAddr;
-            if (!key) {
-                console.warn('[Namron4512785] onEvent: no device ieeeAddr, skipping');
+            
+            // CRITICAL: Ignore global 'start'/'stop' events that have no device
+            // Only act on device-specific events: 'deviceAnnounce', or when device is present
+            if (!eventDevice || !eventDevice.ieeeAddr) {
+                console.warn(`[Namron4512785] onEvent: no device (type=${eventType}), skipping`);
                 return;
             }
+            
+            const key = eventDevice.ieeeAddr;
             const g = globalThis;
             g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
             
-            // Start polling on ANY event except stop (start, deviceAnnounce, message, etc.)
-            if (eventType !== 'stop') {
+            // Start polling on device-specific events (deviceAnnounce, etc.) but not 'stop'
+            if (eventType === 'stop') {
+                // Stop polling for this device
                 if (g.__namron4512785_poll__.has(key)) {
-                    console.warn(`[Namron4512785] Already polling ${key}, skipping`);
-                    return; // Already polling
+                    clearInterval(g.__namron4512785_poll__.get(key));
+                    g.__namron4512785_poll__.delete(key);
+                    console.warn(`[Namron4512785] *** STOP POLLING *** ${key}`);
                 }
-                const intervalMs = 60000; // 60s
-                // eslint-disable-next-line no-console
-                console.warn(`[Namron4512785] *** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${eventType})`);
-                const timer = setInterval(async () => {
-                    try {
-                        const ep = findBestEndpoint(eventDevice);
-                        if (!ep) return;
-                        // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] === POLLING CYCLE START ===`);
-                        // Read measurements and log results to verify polling works
-                        const tempRes = await ep.read('msTemperatureMeasurement', [0x0000]);
-                        console.warn(`[Namron4512785] POLL ntc1 result:`, JSON.stringify(tempRes));
-                        const waterRes = await ep.read(0x04E0, [0x0000, 0x0003]);
-                        console.warn(`[Namron4512785] POLL ntc2/water result:`, JSON.stringify(waterRes));
-                        await ep.read('haElectricalMeasurement', [0x0505, 0x0508, 0x050B]);
-                        await ep.read('seMetering', [0x0000]);
-                        await ep.read('genDeviceTempCfg', [0x0000]);
-                        console.warn(`[Namron4512785] === POLLING CYCLE END ===`);
-                    } catch (e) {
-                        // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] poll error: ${e}`);
-                    }
-                }, intervalMs);
-                g.__namron4512785_poll__.set(key, timer);
+                return;
             }
             
-            if (type === 'stop') {
-                const timer = g.__namron4512785_poll__.get(key);
-                if (timer) {
-                    clearInterval(timer);
-                    console.warn(`[Namron4512785] STOPPED polling ${key}`);
-                }
-                g.__namron4512785_poll__.delete(key);
+            // Start polling if not already running
+            if (g.__namron4512785_poll__.has(key)) {
+                console.warn(`[Namron4512785] Already polling ${key}, skipping`);
+                return;
             }
+            
+            const intervalMs = 60000; // 60s
+            // eslint-disable-next-line no-console
+            console.warn(`[Namron4512785] *** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${eventType})`);
+            const timer = setInterval(async () => {
+                try {
+                    const ep = findBestEndpoint(eventDevice);
+                    if (!ep) return;
+                    // eslint-disable-next-line no-console
+                    console.warn(`[Namron4512785] === POLLING CYCLE START ===`);
+                    // Read measurements and log results to verify polling works
+                    const tempRes = await ep.read('msTemperatureMeasurement', [0x0000]);
+                    console.warn(`[Namron4512785] POLL ntc1 result:`, JSON.stringify(tempRes));
+                    const waterRes = await ep.read(0x04E0, [0x0000, 0x0003]);
+                    console.warn(`[Namron4512785] POLL ntc2/water result:`, JSON.stringify(waterRes));
+                    await ep.read('haElectricalMeasurement', [0x0505, 0x0508, 0x050B]);
+                    await ep.read('seMetering', [0x0000]);
+                    await ep.read('genDeviceTempCfg', [0x0000]);
+                    console.warn(`[Namron4512785] === POLLING CYCLE END ===`);
+                } catch (e) {
+                    // eslint-disable-next-line no-console
+                    console.warn(`[Namron4512785] poll error: ${e}`);
+                }
+            }, intervalMs);
+            g.__namron4512785_poll__.set(key, timer);
         },
     },
 ];

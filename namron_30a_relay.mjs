@@ -569,6 +569,12 @@ const tzLocal = {
 
 // Use modernExtend for on/off (includes get+set and exposure)
 
+// Global polling setup - start immediately for all devices
+const g = globalThis;
+g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
+// eslint-disable-next-line no-console
+console.warn('[Namron4512785] CONVERTER MODULE LOADED - global poll map initialized');
+
 // Export as array per docs
 export default [
     {
@@ -737,18 +743,24 @@ export default [
         // Add light polling to keep values fresh if the device doesn't report often
         onEvent: async (type, data, device) => {
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] onEvent: type=${type} device=${device?.ieeeAddr}`);
+            console.warn(`[Namron4512785] *** onEvent CALLED *** type=${type} device=${device?.ieeeAddr || 'NO_DEVICE'}`);
             const key = device?.ieeeAddr;
-            if (!key) return;
+            if (!key) {
+                console.warn('[Namron4512785] onEvent: no device ieeeAddr, skipping');
+                return;
+            }
             const g = globalThis;
             g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
             
             // Start polling on ANY event except stop (start, deviceAnnounce, message, etc.)
             if (type !== 'stop') {
-                if (g.__namron4512785_poll__.has(key)) return; // Already polling
+                if (g.__namron4512785_poll__.has(key)) {
+                    console.warn(`[Namron4512785] Already polling ${key}, skipping`);
+                    return; // Already polling
+                }
                 const intervalMs = 60000; // 60s
                 // eslint-disable-next-line no-console
-                console.warn(`[Namron4512785] START POLLING ${key} every ${intervalMs/1000}s (triggered by ${type})`);
+                console.warn(`[Namron4512785] *** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${type})`);
                 const timer = setInterval(async () => {
                     try {
                         const ep = findBestEndpoint(device);

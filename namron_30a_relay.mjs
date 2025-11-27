@@ -325,7 +325,7 @@ const tzLocal = {
                     case 'ntc1_temperature':
                         res = await entity.read('msTemperatureMeasurement', [0x0000]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read msTemperatureMeasurement keys=${Object.keys(res||{}).join(',')}`);
+                        console.warn(`[Namron4512785] read msTemperatureMeasurement FULL RESULT:`, JSON.stringify(res));
                         k = pick(res, [0x0000, 'measuredValue']); raw = res?.[k];
                         if (raw !== undefined && raw !== null && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*10)/10; return {state: {ntc1_temperature: val}};
@@ -334,7 +334,7 @@ const tzLocal = {
                     case 'ntc2_temperature':
                         res = await entity.read(0x04E0, [0x0000]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        console.warn(`[Namron4512785] read 0x04E0 FULL RESULT:`, JSON.stringify(res));
                         k = pick(res, [0x0000, 'ntc2Temperature']); raw = res?.[k];
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*10)/10; return {state: {ntc2_temperature: val}};
@@ -343,7 +343,7 @@ const tzLocal = {
                     case 'water_sensor':
                         res = await entity.read(0x04E0, [0x0003]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        console.warn(`[Namron4512785] read 0x04E0 attr 0x0003 FULL RESULT:`, JSON.stringify(res));
                         k = pick(res, [0x0003, 'waterSensor']); raw = res?.[k];
                         if (raw !== undefined) return {state: {water_sensor: !!raw}};
                         break;

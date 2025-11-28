@@ -1,6 +1,10 @@
 // External converter for Namron 4512785 (Zigbee 30A relay)
 // Hybrid: modernExtend for onOff + custom numeric parsers with debug logs.
 
+// Version tracking - increment on each significant change
+const CONVERTER_VERSION = '1.2.0'; // Removed custom reporting config, using device defaults
+const CONVERTER_BUILD = '2025-11-28-002'; // YYYY-MM-DD-NNN format
+
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
 import * as m from 'zigbee-herdsman-converters/lib/modernExtend';
@@ -16,9 +20,9 @@ const ts = () => {
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
-const logInfo = (msg) => console.info(`[${ts()}] [Namron4512785] ${msg}`);
-const logWarn = (msg) => console.warn(`[${ts()}] [Namron4512785] ${msg}`);
-const logError = (msg) => console.error(`[${ts()}] [Namron4512785] ${msg}`);
+const logInfo = (msg) => console.info(`[${ts()}] [Namron4512785 v${CONVERTER_VERSION}] ${msg}`);
+const logWarn = (msg) => console.warn(`[${ts()}] [Namron4512785 v${CONVERTER_VERSION}] ${msg}`);
+const logError = (msg) => console.error(`[${ts()}] [Namron4512785 v${CONVERTER_VERSION}] ${msg}`);
 const hasAny = (obj, keys) => keys.some((k) => Object.prototype.hasOwnProperty.call(obj, k));
 const pick = (obj, keys) => keys.find((k) => Object.prototype.hasOwnProperty.call(obj, k));
 const invert = (map) => Object.fromEntries(Object.entries(map).map(([k, v]) => [v, k]));
@@ -657,6 +661,11 @@ export default [
         meta: {configureKey: 1},
         configure: async (device, coordinatorEndpoint, logger) => {
             const L = mkLogger(logger);
+            
+            // Version banner - helps confirm correct converter is loaded
+            L.info(`[Namron4512785] ========================================`);
+            L.info(`[Namron4512785] Converter v${CONVERTER_VERSION} build ${CONVERTER_BUILD}`);
+            L.info(`[Namron4512785] ========================================`);
             
             // Log device identification info to help diagnose "Not supported" issue
             L.warn(`[Namron4512785] DEVICE INFO: modelID="${device.modelID}" manufacturerName="${device.manufacturerName}" ieeeAddr=${device.ieeeAddr}`);

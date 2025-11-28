@@ -267,7 +267,7 @@ const fzLocal = {
         },
     },
 
-    // 0x0702 seMetering -> energy (kWh) from attr 0x0000 (assume Wh, divide /1000)
+    // 0x0702 seMetering -> energy (kWh) from attr 0x0000 (device reports 100× too high)
     metering_num: {
         cluster: 'seMetering',
         type: ['attributeReport', 'readResponse'],
@@ -277,7 +277,7 @@ const fzLocal = {
             if (key !== undefined) {
                 const raw = msg.data[key];
                 if (typeof raw === 'number') {
-                    return {energy: raw}; // test raw value too see if we need scaling
+                    return {energy: Math.round(raw / 100 * 100) / 100}; // Divide by 100, round to 2 decimals
                 }
             }
         },
@@ -397,7 +397,7 @@ const tzLocal = {
                         // eslint-disable-next-line no-console
                         logWarn(`read seMetering keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0000, 'currentSummationDelivered', 'currentSummDelivered']); raw = res?.[k];
-                        if (typeof raw === 'number') { val = Math.round((raw/1000)*1000)/1000; return {state: {energy: val}}; }
+                        if (typeof raw === 'number') { val = Math.round(raw / 100 * 100) / 100; return {state: {energy: val}}; }
                         break;
                     case 'water_condition_alarm':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000E]);

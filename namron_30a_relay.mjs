@@ -11,6 +11,10 @@ const e = exposes.presets;
 const ea = exposes.access;
 
 // Helpers
+const ts = () => new Date().toISOString().substring(0, 19).replace('T', ' '); // YYYY-MM-DD HH:MM:SS
+const logInfo = (msg) => console.info(`[${ts()}] [Namron4512785] ${msg}`);
+const logWarn = (msg) => console.warn(`[${ts()}] [Namron4512785] ${msg}`);
+const logError = (msg) => console.error(`[${ts()}] [Namron4512785] ${msg}`);
 const hasAny = (obj, keys) => keys.some((k) => Object.prototype.hasOwnProperty.call(obj, k));
 const pick = (obj, keys) => keys.find((k) => Object.prototype.hasOwnProperty.call(obj, k));
 const invert = (map) => Object.fromEntries(Object.entries(map).map(([k, v]) => [v, k]));
@@ -274,27 +278,27 @@ const fzLocal = {
     // Debug loggers for verification of clusters/attrs
     debug_0006: { cluster: 0x0006, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
-        console.warn(`[Namron4512785] DEBUG 0x0006 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
+        logWarn(`DEBUG 0x0006 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
     debug_0002: { cluster: 0x0002, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
-        console.warn(`[Namron4512785] DEBUG 0x0002 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
+        logWarn(`DEBUG 0x0002 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
     debug_0402: { cluster: 0x0402, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
-        console.warn(`[Namron4512785] DEBUG 0x0402 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
+        logWarn(`DEBUG 0x0402 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
     debug_04E0: { cluster: 0x04E0, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
-        console.warn(`[Namron4512785] DEBUG 0x04E0: keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
+        logWarn(`DEBUG 0x04E0: keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
     debug_0B04: { cluster: 0x0B04, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
-        console.warn(`[Namron4512785] DEBUG 0x0B04 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
+        logWarn(`DEBUG 0x0B04 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
     debug_0702: { cluster: 0x0702, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
-        console.warn(`[Namron4512785] DEBUG 0x0702 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
+        logWarn(`DEBUG 0x0702 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
 };
 
@@ -309,14 +313,14 @@ const tzLocal = {
         ],
         convertGet: async (entity, key) => {
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] get ${key}`);
+            logWarn(`get ${key}`);
             try {
                 let res; let k; let raw; let val;
                 switch (key) {
                     case 'device_temperature':
                         res = await entity.read('genDeviceTempCfg', [0x0000]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read genDeviceTempCfg keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read genDeviceTempCfg keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0000, 'currentTemperature']); raw = res?.[k];
                         if (raw !== undefined && raw !== null && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/10)*10)/10; return {state: {device_temperature: val}};
@@ -325,90 +329,90 @@ const tzLocal = {
                     case 'ntc1_temperature':
                         res = await entity.read('msTemperatureMeasurement', [0x0000]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] ntc1 read result:`, JSON.stringify(res));
+                        logWarn(`ntc1 read result:`, JSON.stringify(res));
                         k = pick(res, [0x0000, 'measuredValue']); raw = res?.[k];
                         if (raw !== undefined && raw !== null && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*10)/10;
-                            console.warn(`[Namron4512785] ntc1_temperature = ${val}°C (raw=${raw})`);
+                            logWarn(`ntc1_temperature = ${val}°C (raw=${raw})`);
                             return {state: {ntc1_temperature: val}};
                         }
-                        console.warn(`[Namron4512785] ntc1 INVALID: raw=${raw}`);
+                        logWarn(`ntc1 INVALID: raw=${raw}`);
                         break;
                     case 'ntc2_temperature':
                         res = await entity.read(0x04E0, [0x0000]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] ntc2 read result:`, JSON.stringify(res));
+                        logWarn(`ntc2 read result:`, JSON.stringify(res));
                         k = pick(res, [0x0000, 'ntc2Temperature']); raw = res?.[k];
-                        console.warn(`[Namron4512785] ntc2 raw value: ${raw} (type=${typeof raw})`);
+                        logWarn(`ntc2 raw value: ${raw} (type=${typeof raw})`);
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000 && raw !== 0) {
                             val = Math.round((raw/100)*10)/10;
-                            console.warn(`[Namron4512785] ntc2_temperature = ${val}°C`);
+                            logWarn(`ntc2_temperature = ${val}°C`);
                             return {state: {ntc2_temperature: val}};
                         }
-                        console.warn(`[Namron4512785] ntc2 SKIPPED: raw=${raw} (zero or invalid)`);
+                        logWarn(`ntc2 SKIPPED: raw=${raw} (zero or invalid)`);
                         break;
                     case 'water_sensor':
                         res = await entity.read(0x04E0, [0x0003]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] water sensor read:`, JSON.stringify(res));
+                        logWarn(`water sensor read:`, JSON.stringify(res));
                         k = pick(res, [0x0003, 'waterSensor']); raw = res?.[k];
-                        console.warn(`[Namron4512785] water_sensor raw=${raw} boolean=${!!raw}`);
+                        logWarn(`water_sensor raw=${raw} boolean=${!!raw}`);
                         if (raw !== undefined) {
                             const state = !!raw;
-                            console.warn(`[Namron4512785] water_sensor = ${state}`);
+                            logWarn(`water_sensor = ${state}`);
                             return {state: {water_sensor: state}};
                         }
                         break;
                     case 'voltage':
                         res = await entity.read('haElectricalMeasurement', [0x0505]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0505, 'rmsVoltage']); raw = res?.[k];
                         if (typeof raw === 'number') { val = Math.round((raw/10)*10)/10; return {state: {voltage: val}}; }
                         break;
                     case 'current':
                         res = await entity.read('haElectricalMeasurement', [0x0508]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0508, 'rmsCurrent']); raw = res?.[k];
                         if (typeof raw === 'number') { val = Math.round((raw/1000)*1000)/1000; return {state: {current: val}}; }
                         break;
                     case 'power':
                         res = await entity.read('haElectricalMeasurement', [0x050B]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x050B, 'activePower']); raw = res?.[k];
                         if (typeof raw === 'number') { val = Math.round((raw/10)*10)/10; return {state: {power: val}}; }
                         break;
                     case 'energy':
                         res = await entity.read('seMetering', [0x0000]);
                         // eslint-disable-next-line no-console
-                        console.warn(`[Namron4512785] read seMetering keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read seMetering keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0000, 'currentSummationDelivered', 'currentSummDelivered']); raw = res?.[k];
                         if (typeof raw === 'number') { val = Math.round((raw/1000)*1000)/1000; return {state: {energy: val}}; }
                         break;
                     case 'water_condition_alarm':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000E]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000E, 'waterConditionAlarm']); raw = res?.[k];
                         if (raw != null) return {state: {water_condition_alarm: !!raw}};
                         break;
                     case 'ntc_condition_alarm':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000F]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000F, 'ntcConditionAlarm']); raw = res?.[k];
                         if (raw != null) return {state: {ntc_condition_alarm: !!raw}};
                         break;
                     case 'is_execute_condition':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0010]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0010, 'isExecuteCondition']); raw = res?.[k];
                         if (raw != null) return {state: {is_execute_condition: !!raw}};
                         break;
                 }
             } catch (err) {
                 // eslint-disable-next-line no-console
-                console.warn(`[Namron4512785] get ${key} failed: ${err}`);
+                logWarn(`get ${key} failed: ${err}`);
             }
         },
     },
@@ -421,43 +425,43 @@ const tzLocal = {
         ],
         convertGet: async (entity, key, meta) => {
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] get ${key}`);
+            logWarn(`get ${key}`);
             try {
                 let res; let k; let raw; let val;
                 switch (key) {
                     case 'ntc1_sensor_type':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0001]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0001, 'resistanceValue1']); raw = res?.[k];
                         if (raw != null) return {state: {ntc1_sensor_type: NTC_TYPE_INV[raw] ?? raw}};
                         break;
                     case 'ntc2_sensor_type':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0002]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0002, 'resistanceValue2']); raw = res?.[k];
                         if (raw != null) return {state: {ntc2_sensor_type: NTC_TYPE_INV[raw] ?? raw}};
                         break;
                     case 'water_alarm_relay_action':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0006]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0006, 'waterAlarmRelayAction']); raw = res?.[k];
                         if (raw != null) return {state: {water_alarm_relay_action: WATER_RELAY_ACTION_INV[raw] ?? raw}};
                         break;
                     case 'ntc1_operation_mode':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0007]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0007, 'ntc1OperationSelect']); raw = res?.[k];
                         if (raw != null) return {state: {ntc1_operation_mode: NTC1_OPERATION_INV[raw] ?? raw}};
                         break;
                     case 'ntc2_operation_mode':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0008]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0008, 'ntc2OperationSelect']); raw = res?.[k];
                         if (raw != null) return {state: {ntc2_operation_mode: NTC2_OPERATION_INV[raw] ?? raw}};
                         break;
                     case 'ntc1_relay_auto_temp':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0009]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0009, 'ntc1RelayAutoTemp']); raw = res?.[k];
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*10)/10; return {state: {ntc1_relay_auto_temp: val}};
@@ -465,7 +469,7 @@ const tzLocal = {
                         break;
                     case 'ntc2_relay_auto_temp':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000A]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000A, 'ntc2RelayAutoTemp']); raw = res?.[k];
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*10)/10; return {state: {ntc2_relay_auto_temp: val}};
@@ -473,43 +477,43 @@ const tzLocal = {
                         break;
                     case 'override_option':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000B]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000B, 'overrideOption']); raw = res?.[k];
                         if (raw != null) return {state: {override_option: OVERRIDE_OPTION_INV[raw] ?? raw}};
                         break;
                     case 'ntc1_calibration':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0004]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0004, 'NTCCalibration1']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc1_calibration: raw}};
                         break;
                     case 'ntc2_calibration':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0005]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0005, 'NTCCalibration2']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc2_calibration: raw}};
                         break;
                     case 'ntc1_temp_hysteresis':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000C]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000C, 'ntc1TempHysterisis']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc1_temp_hysteresis: raw}};
                         break;
                     case 'ntc2_temp_hysteresis':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000D]);
-                        console.warn(`[Namron4512785] read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
+                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000D, 'ntc2TempHysterisis']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc2_temp_hysteresis: raw}};
                         break;
                 }
             } catch (err) {
                 // eslint-disable-next-line no-console
-                console.warn(`[Namron4512785] get ${key} failed: ${err}`);
+                logWarn(`get ${key} failed: ${err}`);
             }
         },
         convertSet: async (entity, key, value, meta) => {
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] set ${key} -> ${value}`);
+            logWarn(`set ${key} -> ${value}`);
             let payload; let result;
             switch (key) {
                 case 'ntc1_sensor_type':
@@ -573,7 +577,7 @@ const tzLocal = {
 const g = globalThis;
 g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
 // eslint-disable-next-line no-console
-console.warn('[Namron4512785] CONVERTER MODULE LOADED - global poll map initialized');
+logWarn('CONVERTER MODULE LOADED - global poll map initialized');
 
 // Export as array per docs
 export default [
@@ -775,7 +779,7 @@ export default [
             }
             
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] *** onEvent CALLED *** type=${eventType} device=${eventDevice?.ieeeAddr || 'NO_DEVICE'} data=${JSON.stringify(eventData || {})}`);
+            logWarn(`*** onEvent CALLED *** type=${eventType} device=${eventDevice?.ieeeAddr || 'NO_DEVICE'} data=${JSON.stringify(eventData || {})}`);
             
             // CRITICAL: For device-specific events (deviceAnnounce, deviceInterview, deviceJoined),
             // Z2M may pass device=undefined but include ieee_address in data
@@ -784,12 +788,12 @@ export default [
                 // For deviceAnnounce specifically, device parameter should be the 3rd arg
                 // Skip global 'start'/'stop' events that truly have no device context
                 if (eventType === 'start' || eventType === 'stop') {
-                    console.warn(`[Namron4512785] onEvent: global ${eventType} event, skipping`);
+                    logWarn(`onEvent: global ${eventType} event, skipping`);
                     return;
                 }
                 
                 // For device events without device object, log and skip (can't poll without device)
-                console.warn(`[Namron4512785] onEvent: ${eventType} event but no device object available, skipping`);
+                logWarn(`onEvent: ${eventType} event but no device object available, skipping`);
                 return;
             }
             
@@ -803,26 +807,26 @@ export default [
                 if (g.__namron4512785_poll__.has(key)) {
                     clearInterval(g.__namron4512785_poll__.get(key));
                     g.__namron4512785_poll__.delete(key);
-                    console.warn(`[Namron4512785] *** STOP POLLING *** ${key}`);
+                    logWarn(`*** STOP POLLING *** ${key}`);
                 }
                 return;
             }
             
             // Start polling if not already running
             if (g.__namron4512785_poll__.has(key)) {
-                console.warn(`[Namron4512785] Already polling ${key}, skipping`);
+                logWarn(`Already polling ${key}, skipping`);
                 return;
             }
             
             const intervalMs = 60000; // 60s
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] *** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${eventType})`);
+            logWarn(`*** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${eventType})`);
             const timer = setInterval(async () => {
                 try {
                     const ep = findBestEndpoint(eventDevice);
                     if (!ep) return;
                     // eslint-disable-next-line no-console
-                    console.warn(`[Namron4512785] === POLLING CYCLE START === ${new Date().toISOString()}`);
+                    logWarn(`=== POLLING CYCLE START === ${new Date().toISOString()}`);
                     
                     // Build state object from reads
                     const state = {};
@@ -830,7 +834,7 @@ export default [
                     // Read NTC1 temperature (standard cluster 0x0402)
                     try {
                         const tempRes = await ep.read('msTemperatureMeasurement', [0x0000]);
-                        console.warn(`[Namron4512785] POLL ntc1:`, JSON.stringify(tempRes));
+                        logWarn(`POLL ntc1:`, JSON.stringify(tempRes));
                         if (tempRes && tempRes.measuredValue !== null && tempRes.measuredValue !== undefined) {
                             const raw = tempRes.measuredValue;
                             if (raw !== -32768 && raw !== 0x8000) {
@@ -838,13 +842,13 @@ export default [
                             }
                         }
                     } catch (e) {
-                        console.warn(`[Namron4512785] POLL ntc1 error: ${e}`);
+                        logWarn(`POLL ntc1 error: ${e}`);
                     }
                     
                     // Read NTC2 temp + water sensor (private cluster 0x04E0)
                     try {
                         const waterRes = await ep.read(0x04E0, [0x0000, 0x0003]);
-                        console.warn(`[Namron4512785] POLL ntc2/water:`, JSON.stringify(waterRes));
+                        logWarn(`POLL ntc2/water:`, JSON.stringify(waterRes));
                         // NTC2 temperature (attr 0x0000)
                         if (waterRes && waterRes[0] !== undefined && waterRes[0] !== null) {
                             const raw = waterRes[0];
@@ -857,22 +861,22 @@ export default [
                             state.water_sensor = waterRes[3] === 1;
                         }
                     } catch (e) {
-                        console.warn(`[Namron4512785] POLL ntc2/water error: ${e}`);
+                        logWarn(`POLL ntc2/water error: ${e}`);
                     }
                     
                     // Publish state update if we got any values
                     if (Object.keys(state).length > 0) {
-                        console.warn(`[Namron4512785] POLL publishing state:`, JSON.stringify(state));
+                        logWarn(`POLL publishing state:`, JSON.stringify(state));
                         // Trigger state update by calling the device's publishState if available
                         // Note: This is a workaround since onEvent doesn't have direct publish access
                         // The values should appear after next MQTT poll cycle
                         eventDevice.save();
                     }
                     
-                    console.warn(`[Namron4512785] === POLLING CYCLE END ===`);
+                    logWarn(`=== POLLING CYCLE END ===`);
                 } catch (e) {
                     // eslint-disable-next-line no-console
-                    console.warn(`[Namron4512785] poll error: ${e}`);
+                    logWarn(`poll error: ${e}`);
                 }
             }, intervalMs);
             g.__namron4512785_poll__.set(key, timer);

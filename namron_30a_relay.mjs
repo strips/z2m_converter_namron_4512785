@@ -2,8 +2,8 @@
 // Hybrid: modernExtend for onOff + custom numeric parsers with debug logs.
 
 // Version tracking - increment on each significant change
-const CONVERTER_VERSION = '1.2.3'; // Fixed power scaling (multiply by 10, not divide)
-const CONVERTER_BUILD = '2025-11-28-005'; // YYYY-MM-DD-NNN format
+const CONVERTER_VERSION = '1.2.4'; // Fixed power scaling, removed duplicate exposes, flipped water_sensor logic
+const CONVERTER_BUILD = '2025-11-28-006'; // YYYY-MM-DD-NNN format
 
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
@@ -200,7 +200,7 @@ const fzLocal = {
                 if (raw != null) out.ntc2_sensor_type = NTC_TYPE_INV[raw] ?? raw;
             });
             mapAndAssign(0x0003, [0x0003, 'waterSensorValue', 'waterSensor'], (raw) => {
-                out.water_sensor = !!raw;
+                out.water_sensor = !raw; // Inverted: true=water detected (shorted), false=no water
             });
             mapAndAssign(0x0004, [0x0004, 'NTCCalibration1'], (raw) => {
                 if (typeof raw === 'number') out.ntc1_calibration = raw;
@@ -594,7 +594,10 @@ export default [
         model: '4512785',
         vendor: 'Namron AS',
         description: 'Namron Zigbee 30A relay (numeric-ID external converter)',
-        extend: [m.onOff({powerOnBehavior: false})],
+        extend: [
+            m.onOff({powerOnBehavior: false}),
+            m.electricityMeter(),
+        ],
         fromZigbee: [
             // Parsers (on_off_num deliberately omitted - modernExtend handles it)
             fzLocal.device_temp_num,
@@ -612,21 +615,11 @@ export default [
         ],
     toZigbee: [tzLocal.get_attribute, tzLocal.set_private_attribute],
         exposes: [
-            // Switch and electrical - these need to be explicit to avoid modernExtend conflicts
-            e.switch(),
-            e.voltage().withAccess(ea.STATE | ea.STATE_GET),
-            e.current().withAccess(ea.STATE | ea.STATE_GET),
-            e.power().withAccess(ea.STATE | ea.STATE_GET),
-            e.energy().withAccess(ea.STATE | ea.STATE_GET),
-            // e.switch() - provided by modernExtend onOff
+            // Device-specific sensors (voltage/current/power/energy provided by modernExtend)
             e.numeric('device_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('Internal device temperature'),
             e.numeric('ntc1_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC1 temperature'),
             e.numeric('ntc2_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC2 temperature'),
-            e.binary('water_sensor', ea.STATE | ea.STATE_GET, true, false).withDescription('External water sensor'),
-            e.numeric('voltage', ea.STATE | ea.STATE_GET).withUnit('V').withDescription('RMS voltage'),
-            e.numeric('current', ea.STATE | ea.STATE_GET).withUnit('A').withDescription('RMS current'),
-            e.numeric('power', ea.STATE | ea.STATE_GET).withUnit('W').withDescription('Active power'),
-            e.numeric('energy', ea.STATE | ea.STATE_GET).withUnit('kWh').withDescription('Total energy, kWh'),
+            e.binary('water_sensor', ea.STATE | ea.STATE_GET, true, false).withDescription('External water sensor (true=water detected)'),
             e.enum('ntc1_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))
                 .withDescription('Select NTC type for probe #1 (set r1–r6 to enable reporting).'),
             e.enum('ntc2_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))

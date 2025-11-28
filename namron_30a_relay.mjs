@@ -260,9 +260,9 @@ const fzLocal = {
             const voltKey = pick(msg.data, [0x0505, 'rmsVoltage']);
             const currKey = pick(msg.data, [0x0508, 'rmsCurrent']);
             const powKey  = pick(msg.data, [0x050B, 'activePower']);
-            if (voltKey !== undefined) out.voltage = msg.data[voltKey]; // test raw value too see if we need scaling
-            if (currKey !== undefined) out.current = msg.data[currKey]; // test raw value too see if we need scaling
-            if (powKey  !== undefined) out.power = msg.data[powKey]; // raw value is correct (W)
+            if (voltKey !== undefined) out.voltage = msg.data[voltKey] / 10; // Scale down 10 and keep as-is
+            if (currKey !== undefined) out.current = Math.round((msg.data[currKey] / 1000) * 100) / 100 ; // Scale down 1000 and round to 2 decimals
+            if (powKey  !== undefined) out.power = msg.data[powKey]; // raw value is correct (W) 
             return Object.keys(out).length ? out : undefined;
         },
     },
@@ -340,7 +340,7 @@ const tzLocal = {
                         logWarn(`ntc1 read result:`, JSON.stringify(res));
                         k = pick(res, [0x0000, 'measuredValue']); raw = res?.[k];
                         if (raw !== undefined && raw !== null && raw !== -32768 && raw !== 0x8000) {
-                            val = Math.round((raw/100)*10)/10;
+                            val = Math.round((raw/100)*100)/100;
                             logWarn(`ntc1_temperature = ${val}°C (raw=${raw})`);
                             return {state: {ntc1_temperature: val}};
                         }
@@ -353,7 +353,7 @@ const tzLocal = {
                         k = pick(res, [0x0000, 'ntc2Temperature']); raw = res?.[k];
                         logWarn(`ntc2 raw value: ${raw} (type=${typeof raw})`);
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000 && raw !== 0) {
-                            val = Math.round((raw/100)*10)/10;
+                            val = Math.round((raw/100)*100)/100;
                             logWarn(`ntc2_temperature = ${val}°C`);
                             return {state: {ntc2_temperature: val}};
                         }
@@ -366,7 +366,7 @@ const tzLocal = {
                         k = pick(res, [0x0003, 'waterSensor']); raw = res?.[k];
                         logWarn(`water_sensor raw=${raw} boolean=${!!raw}`);
                         if (raw !== undefined) {
-                            const state = !!raw;
+                            const state = !raw;
                             logWarn(`water_sensor = ${state}`);
                             return {state: {water_sensor: state}};
                         }
@@ -376,14 +376,14 @@ const tzLocal = {
                         // eslint-disable-next-line no-console
                         logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0505, 'rmsVoltage']); raw = res?.[k];
-                        if (typeof raw === 'number') { val = Math.round((raw/10)*10)/10; return {state: {voltage: val}}; }
+                        if (typeof raw === 'number') { val = raw/10; return {state: {voltage: val}}; } // Scale down 10 and keep as-is
                         break;
                     case 'current':
                         res = await entity.read('haElectricalMeasurement', [0x0508]);
                         // eslint-disable-next-line no-console
                         logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0508, 'rmsCurrent']); raw = res?.[k];
-                        if (typeof raw === 'number') { val = Math.round((raw/1000)*1000)/1000; return {state: {current: val}}; }
+                        if (typeof raw === 'number') { val = Math.round((raw / 1000) * 100) / 100; return {state: {current: val}}; }
                         break;
                     case 'power':
                         res = await entity.read('haElectricalMeasurement', [0x050B]);

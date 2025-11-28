@@ -2,8 +2,8 @@
 // Hybrid: modernExtend for onOff + custom numeric parsers with debug logs.
 
 // Version tracking - increment on each significant change
-const CONVERTER_VERSION = '1.2.1'; // Fixed fromZigbee cluster names: use strings not numeric IDs
-const CONVERTER_BUILD = '2025-11-28-003'; // YYYY-MM-DD-NNN format
+const CONVERTER_VERSION = '1.2.3'; // Fixed power scaling (multiply by 10, not divide)
+const CONVERTER_BUILD = '2025-11-28-005'; // YYYY-MM-DD-NNN format
 
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
@@ -177,7 +177,7 @@ const fzLocal = {
 
     // 0x04E0 Private cluster -> ntc2_temperature (attr 0x0000, /100), water_sensor (attr 0x0003)
     private_04e0_num: {
-        cluster: PRIVATE_CLUSTER_ID,
+        cluster: '1248',  // Z2M converts 0x04E0 to string '1248' for lookup
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg) => {
             const out = {};
@@ -260,9 +260,9 @@ const fzLocal = {
             const voltKey = pick(msg.data, [0x0505, 'rmsVoltage']);
             const currKey = pick(msg.data, [0x0508, 'rmsCurrent']);
             const powKey  = pick(msg.data, [0x050B, 'activePower']);
-            if (voltKey !== undefined) out.voltage = Math.round((msg.data[voltKey] / 10) * 10) / 10;
-            if (currKey !== undefined) out.current = Math.round((msg.data[currKey] / 1000) * 1000) / 1000;
-            if (powKey  !== undefined) out.power = Math.round((msg.data[powKey] / 10) * 10) / 10; // divide by 10 as observed
+            if (voltKey !== undefined) out.voltage = msg.data[voltKey]; // test raw value too see if we need scaling
+            if (currKey !== undefined) out.current = msg.data[currKey]; // test raw value too see if we need scaling
+            if (powKey  !== undefined) out.power = msg.data[powKey]; // raw value is correct (W)
             return Object.keys(out).length ? out : undefined;
         },
     },
@@ -277,34 +277,34 @@ const fzLocal = {
             if (key !== undefined) {
                 const raw = msg.data[key];
                 if (typeof raw === 'number') {
-                    return {energy: Math.round((raw / 1000) * 1000) / 1000};
+                    return {energy: raw}; // test raw value too see if we need scaling
                 }
             }
         },
     },
 
     // Debug loggers for verification of clusters/attrs
-    debug_0006: { cluster: 0x0006, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
+    debug_0006: { cluster: 'genOnOff', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
         logWarn(`DEBUG 0x0006 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
-    debug_0002: { cluster: 0x0002, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
+    debug_0002: { cluster: 'genDeviceTempCfg', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
         logWarn(`DEBUG 0x0002 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
-    debug_0402: { cluster: 0x0402, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
+    debug_0402: { cluster: 'msTemperatureMeasurement', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
         logWarn(`DEBUG 0x0402 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
-    debug_04E0: { cluster: 0x04E0, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
+    debug_04E0: { cluster: '1248', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
         logWarn(`DEBUG 0x04E0: keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
-    debug_0B04: { cluster: 0x0B04, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
+    debug_0B04: { cluster: 'haElectricalMeasurement', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
         logWarn(`DEBUG 0x0B04 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
-    debug_0702: { cluster: 0x0702, type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
+    debug_0702: { cluster: 'seMetering', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
         // eslint-disable-next-line no-console
         logWarn(`DEBUG 0x0702 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
     }},
@@ -331,7 +331,7 @@ const tzLocal = {
                         logWarn(`read genDeviceTempCfg keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0000, 'currentTemperature']); raw = res?.[k];
                         if (raw !== undefined && raw !== null && raw !== -32768 && raw !== 0x8000) {
-                            val = Math.round((raw/10)*10)/10; return {state: {device_temperature: val}};
+                            val = raw; return {state: {device_temperature: val}};
                         }
                         break;
                     case 'ntc1_temperature':
@@ -390,7 +390,7 @@ const tzLocal = {
                         // eslint-disable-next-line no-console
                         logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x050B, 'activePower']); raw = res?.[k];
-                        if (typeof raw === 'number') { val = Math.round((raw/10)*10)/10; return {state: {power: val}}; }
+                        if (typeof raw === 'number') { return {state: {power: raw}}; } // raw value is correct (W)
                         break;
                     case 'energy':
                         res = await entity.read('seMetering', [0x0000]);

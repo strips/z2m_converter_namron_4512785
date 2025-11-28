@@ -10,8 +10,12 @@ const {DataType} = zcl;
 const e = exposes.presets;
 const ea = exposes.access;
 
-// Helpers
-const ts = () => new Date().toISOString().substring(0, 19).replace('T', ' '); // YYYY-MM-DD HH:MM:SS
+// Helpers - Use local time to match Z2M's log timestamps (not UTC)
+const ts = () => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
 const logInfo = (msg) => console.info(`[${ts()}] [Namron4512785] ${msg}`);
 const logWarn = (msg) => console.warn(`[${ts()}] [Namron4512785] ${msg}`);
 const logError = (msg) => console.error(`[${ts()}] [Namron4512785] ${msg}`);

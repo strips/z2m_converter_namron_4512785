@@ -708,20 +708,17 @@ export default [
                 }]);
             } catch (err) { L.warn(`[Namron4512785] metering rpt failed: ${err}`); }
 
-            // CRITICAL: Configure reporting for cluster 0x0402 (NTC1 temperature)
-            // This is a STANDARD cluster that SHOULD support reporting (unlike private 0x04E0)
-            // Without this, NTC1 temperature won't auto-update in GUI
-            try {
-                await endpoint.configureReporting(0x0402, [{
-                    attribute: 0x0000, // measuredValue (NTC1 temperature)
-                    minimumReportInterval: 15,
-                    maximumReportInterval: 600,
-                    reportableChange: 10, // 0.1°C (raw is ×100)
-                }]);
-                L.info('[Namron4512785] configured reporting for cluster 0x0402 (NTC1 temperature)');
-            } catch (err) { 
-                L.warn(`[Namron4512785] cluster 0x0402 reporting failed: ${err}`); 
-            }
+            // CRITICAL: DO NOT configure reporting for cluster 0x0402 (NTC1 temperature)
+            // The device has factory default reporting that works, but if we try to customize
+            // the reporting parameters, the device accepts them (status=0) but then STOPS
+            // sending automatic reports entirely. Better to use device defaults.
+            // Debug log evidence: Device sent automatic reports at 12:13:05, we reconfigured
+            // at 12:13:16 (device accepted status=0), but then NO MORE automatic reports.
+            // Manual reads still work, so the issue is specifically with custom reporting config.
+            //
+            // REMOVED: Custom reporting configuration for 0x0402
+            // Device will use factory defaults which send automatic temperature reports.
+            L.info('[Namron4512785] Skipping 0x0402 reporting config - using device defaults');
 
             // CRITICAL: Configure reporting for private cluster 0x04E0 (NTC temps, water sensor)
             // Without this, the device may not report temperature/water changes automatically

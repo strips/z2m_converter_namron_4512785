@@ -2,8 +2,8 @@
 // Hybrid: modernExtend for onOff + custom numeric parsers with debug logs.
 
 // Version tracking - increment on each significant change
-const CONVERTER_VERSION = '1.2.0'; // Removed custom reporting config, using device defaults
-const CONVERTER_BUILD = '2025-11-28-002'; // YYYY-MM-DD-NNN format
+const CONVERTER_VERSION = '1.2.1'; // Fixed fromZigbee cluster names: use strings not numeric IDs
+const CONVERTER_BUILD = '2025-11-28-003'; // YYYY-MM-DD-NNN format
 
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
@@ -142,9 +142,9 @@ const fzLocal = {
         },
     },
 
-    // 0x0002 genDeviceTempCfg -> device_temperature (°C) from attr 0x0000 (/10)
+    // 0x0002 genDeviceTempCfg -> device_temperature (attr 0x0000, /10)
     device_temp_num: {
-        cluster: 0x0002,
+        cluster: 'genDeviceTempCfg',
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg) => {
             if (!msg.data) return;
@@ -161,7 +161,7 @@ const fzLocal = {
 
     // 0x0402 msTemperatureMeasurement -> ntc1_temperature (°C) from attr 0x0000 (/100)
     temp_measurement_num: {
-        cluster: 0x0402,
+        cluster: 'msTemperatureMeasurement',
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg) => {
             if (!msg.data) return;
@@ -252,7 +252,7 @@ const fzLocal = {
 
     // 0x0B04 haElectricalMeasurement -> voltage (0x0505 /10), current (0x0508 /1000), power (0x050B)
     electrical_num: {
-        cluster: 0x0B04,
+        cluster: 'haElectricalMeasurement',
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg) => {
             const out = {};
@@ -269,7 +269,7 @@ const fzLocal = {
 
     // 0x0702 seMetering -> energy (kWh) from attr 0x0000 (assume Wh, divide /1000)
     metering_num: {
-        cluster: 0x0702,
+        cluster: 'seMetering',
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg) => {
             if (!msg.data) return;

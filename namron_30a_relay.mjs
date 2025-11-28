@@ -1,9 +1,9 @@
 // External converter for Namron 4512785 (Zigbee 30A relay)
-// Hybrid: modernExtend for onOff + custom numeric parsers with debug logs.
+// Supports: on/off, power monitoring, NTC temperature sensors, water leak sensor
 
-// Version tracking - increment on each significant change
-const CONVERTER_VERSION = '1.2.7'; // Fixed energy converter to handle 'currentSummDelivered' key
-const CONVERTER_BUILD = '2025-11-28-009'; // YYYY-MM-DD-NNN format
+// Version tracking
+const CONVERTER_VERSION = '1.4.0'; // Cleaned for Z2M submission
+const CONVERTER_BUILD = '2025-11-28-012';
 
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
@@ -14,15 +14,6 @@ const {DataType} = zcl;
 const e = exposes.presets;
 const ea = exposes.access;
 
-// Helpers - Use local time to match Z2M's log timestamps (not UTC)
-const ts = () => {
-    const d = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-};
-const logInfo = (msg) => console.info(`[${ts()}] [Namron4512785 v${CONVERTER_VERSION}] ${msg}`);
-const logWarn = (msg) => console.warn(`[${ts()}] [Namron4512785 v${CONVERTER_VERSION}] ${msg}`);
-const logError = (msg) => console.error(`[${ts()}] [Namron4512785 v${CONVERTER_VERSION}] ${msg}`);
 const hasAny = (obj, keys) => keys.some((k) => Object.prototype.hasOwnProperty.call(obj, k));
 const pick = (obj, keys) => keys.find((k) => Object.prototype.hasOwnProperty.call(obj, k));
 const invert = (map) => Object.fromEntries(Object.entries(map).map(([k, v]) => [v, k]));
@@ -55,45 +46,45 @@ const parseNumeric = (value, label, scale = 1) => {
 
 const PRIVATE_CLUSTER_ID = 0x04E0;
 const NTC_TYPE_MAP = {
-    none: 0,
-    ntc_10k: 1,
-    ntc_12k: 2,
-    ntc_15k: 3,
-    ntc_22k: 4,
-    ntc_33k: 5,
-    ntc_47k: 6,
+    'None': 0,
+    'NTC-10K': 1,
+    'NTC-12K': 2,
+    'NTC-15K': 3,
+    'NTC-22K': 4,
+    'NTC-33K': 5,
+    'NTC-47K': 6,
 };
 const NTC_TYPE_INV = invert(NTC_TYPE_MAP);
 const WATER_RELAY_ACTION_MAP = {
-    no_action: 0,
-    alarm_turn_off: 1,
-    alarm_turn_on: 2,
-    alarm_turn_off_no_action: 3,
-    alarm_turn_on_no_action: 4,
-    no_alarm_turn_off: 5,
-    no_alarm_turn_on: 6,
+    'No action': 0,
+    'Water alarm: Turn OFF (restore when dry)': 1,
+    'Water alarm: Turn ON (restore when dry)': 2,
+    'Water alarm: Turn OFF (stay off)': 3,
+    'Water alarm: Turn ON (stay on)': 4,
+    'No water: Turn OFF': 5,
+    'No water: Turn ON': 6,
 };
 const WATER_RELAY_ACTION_INV = invert(WATER_RELAY_ACTION_MAP);
 const NTC1_OPERATION_MAP = {
-    unuse: 0,
-    ntc1_1: 1,
-    ntc1_2: 2,
-    ntc1_3: 3,
-    ntc1_4: 4,
+    'No action': 0,
+    'OFF when hot, ON when cold': 1,
+    'ON when hot, OFF when cold': 2,
+    'OFF when hot (stay off)': 3,
+    'ON when hot (stay on)': 4,
 };
 const NTC1_OPERATION_INV = invert(NTC1_OPERATION_MAP);
 const NTC2_OPERATION_MAP = {
-    unuse: 0,
-    ntc2_1: 1,
-    ntc2_2: 2,
-    ntc2_3: 3,
-    ntc2_4: 4,
+    'No action': 0,
+    'OFF when hot, ON when cold': 1,
+    'ON when hot, OFF when cold': 2,
+    'OFF when hot (stay off)': 3,
+    'ON when hot (stay on)': 4,
 };
 const NTC2_OPERATION_INV = invert(NTC2_OPERATION_MAP);
 const OVERRIDE_OPTION_MAP = {
-    no_priority: 0,
-    water_alarm_priority: 1,
-    ntc_priority: 2,
+    'No priority': 0,
+    'Water alarm has priority': 1,
+    'Temperature (NTC) has priority': 2,
 };
 const OVERRIDE_OPTION_INV = invert(OVERRIDE_OPTION_MAP);
 const mkLogger = (logger) => ({
@@ -282,32 +273,6 @@ const fzLocal = {
             }
         },
     },
-
-    // Debug loggers for verification of clusters/attrs
-    debug_0006: { cluster: 'genOnOff', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
-        // eslint-disable-next-line no-console
-        logWarn(`DEBUG 0x0006 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
-    }},
-    debug_0002: { cluster: 'genDeviceTempCfg', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
-        // eslint-disable-next-line no-console
-        logWarn(`DEBUG 0x0002 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
-    }},
-    debug_0402: { cluster: 'msTemperatureMeasurement', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
-        // eslint-disable-next-line no-console
-        logWarn(`DEBUG 0x0402 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
-    }},
-    debug_04E0: { cluster: '1248', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
-        // eslint-disable-next-line no-console
-        logWarn(`DEBUG 0x04E0: keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
-    }},
-    debug_0B04: { cluster: 'haElectricalMeasurement', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
-        // eslint-disable-next-line no-console
-        logWarn(`DEBUG 0x0B04 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
-    }},
-    debug_0702: { cluster: 'seMetering', type: ['attributeReport', 'readResponse'], convert: (m, msg) => {
-        // eslint-disable-next-line no-console
-        logWarn(`DEBUG 0x0702 (${msg.cluster}): keys=${Object.keys(msg.data||{}).join(',')} type=${msg.type}`);
-    }},
 };
 
 // toZigbee convertGet for each exposed measurement so Refresh buttons work
@@ -320,15 +285,11 @@ const tzLocal = {
             'water_condition_alarm', 'ntc_condition_alarm', 'is_execute_condition',
         ],
         convertGet: async (entity, key) => {
-            // eslint-disable-next-line no-console
-            logWarn(`get ${key}`);
             try {
                 let res; let k; let raw; let val;
                 switch (key) {
                     case 'device_temperature':
                         res = await entity.read('genDeviceTempCfg', [0x0000]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`read genDeviceTempCfg keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0000, 'currentTemperature']); raw = res?.[k];
                         if (raw !== undefined && raw !== null && raw !== -32768 && raw !== 0x8000) {
                             val = raw; return {state: {device_temperature: val}};
@@ -336,91 +297,66 @@ const tzLocal = {
                         break;
                     case 'ntc1_temperature':
                         res = await entity.read('msTemperatureMeasurement', [0x0000]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`ntc1 read result:`, JSON.stringify(res));
                         k = pick(res, [0x0000, 'measuredValue']); raw = res?.[k];
                         if (raw !== undefined && raw !== null && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*100)/100;
-                            logWarn(`ntc1_temperature = ${val}°C (raw=${raw})`);
                             return {state: {ntc1_temperature: val}};
                         }
-                        logWarn(`ntc1 INVALID: raw=${raw}`);
                         break;
                     case 'ntc2_temperature':
                         res = await entity.read(0x04E0, [0x0000]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`ntc2 read result:`, JSON.stringify(res));
                         k = pick(res, [0x0000, 'ntc2Temperature']); raw = res?.[k];
-                        logWarn(`ntc2 raw value: ${raw} (type=${typeof raw})`);
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000 && raw !== 0) {
                             val = Math.round((raw/100)*100)/100;
-                            logWarn(`ntc2_temperature = ${val}°C`);
                             return {state: {ntc2_temperature: val}};
                         }
-                        logWarn(`ntc2 SKIPPED: raw=${raw} (zero or invalid)`);
                         break;
                     case 'water_sensor':
                         res = await entity.read(0x04E0, [0x0003]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`water sensor read:`, JSON.stringify(res));
                         k = pick(res, [0x0003, 'waterSensor']); raw = res?.[k];
-                        logWarn(`water_sensor raw=${raw} boolean=${!!raw}`);
                         if (raw !== undefined) {
                             const state = !raw;
-                            logWarn(`water_sensor = ${state}`);
                             return {state: {water_sensor: state}};
                         }
                         break;
                     case 'voltage':
                         res = await entity.read('haElectricalMeasurement', [0x0505]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0505, 'rmsVoltage']); raw = res?.[k];
-                        if (typeof raw === 'number') { val = raw/10; return {state: {voltage: val}}; } // Scale down 10 and keep as-is
+                        if (typeof raw === 'number') { val = raw/10; return {state: {voltage: val}}; }
                         break;
                     case 'current':
                         res = await entity.read('haElectricalMeasurement', [0x0508]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0508, 'rmsCurrent']); raw = res?.[k];
                         if (typeof raw === 'number') { val = Math.round((raw / 1000) * 100) / 100; return {state: {current: val}}; }
                         break;
                     case 'power':
                         res = await entity.read('haElectricalMeasurement', [0x050B]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`read haElectricalMeasurement keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x050B, 'activePower']); raw = res?.[k];
-                        if (typeof raw === 'number') { return {state: {power: raw}}; } // raw value is correct (W)
+                        if (typeof raw === 'number') { return {state: {power: raw}}; }
                         break;
                     case 'energy':
                         res = await entity.read('seMetering', [0x0000]);
-                        // eslint-disable-next-line no-console
-                        logWarn(`read seMetering keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0000, 'currentSummationDelivered', 'currentSummDelivered']); raw = res?.[k];
                         if (typeof raw === 'number') { val = Math.round(raw / 100 * 100) / 100; return {state: {energy: val}}; }
                         break;
                     case 'water_condition_alarm':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000E]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000E, 'waterConditionAlarm']); raw = res?.[k];
                         if (raw != null) return {state: {water_condition_alarm: !!raw}};
                         break;
                     case 'ntc_condition_alarm':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000F]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000F, 'ntcConditionAlarm']); raw = res?.[k];
                         if (raw != null) return {state: {ntc_condition_alarm: !!raw}};
                         break;
                     case 'is_execute_condition':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0010]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0010, 'isExecuteCondition']); raw = res?.[k];
                         if (raw != null) return {state: {is_execute_condition: !!raw}};
                         break;
                 }
             } catch (err) {
-                // eslint-disable-next-line no-console
-                logWarn(`get ${key} failed: ${err}`);
+                throw new Error(`Failed to read ${key}: ${err.message}`);
             }
         },
     },
@@ -432,44 +368,36 @@ const tzLocal = {
             'ntc2_calibration', 'ntc1_temp_hysteresis', 'ntc2_temp_hysteresis',
         ],
         convertGet: async (entity, key, meta) => {
-            // eslint-disable-next-line no-console
-            logWarn(`get ${key}`);
             try {
                 let res; let k; let raw; let val;
                 switch (key) {
                     case 'ntc1_sensor_type':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0001]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0001, 'resistanceValue1']); raw = res?.[k];
                         if (raw != null) return {state: {ntc1_sensor_type: NTC_TYPE_INV[raw] ?? raw}};
                         break;
                     case 'ntc2_sensor_type':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0002]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0002, 'resistanceValue2']); raw = res?.[k];
                         if (raw != null) return {state: {ntc2_sensor_type: NTC_TYPE_INV[raw] ?? raw}};
                         break;
                     case 'water_alarm_relay_action':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0006]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0006, 'waterAlarmRelayAction']); raw = res?.[k];
                         if (raw != null) return {state: {water_alarm_relay_action: WATER_RELAY_ACTION_INV[raw] ?? raw}};
                         break;
                     case 'ntc1_operation_mode':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0007]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0007, 'ntc1OperationSelect']); raw = res?.[k];
                         if (raw != null) return {state: {ntc1_operation_mode: NTC1_OPERATION_INV[raw] ?? raw}};
                         break;
                     case 'ntc2_operation_mode':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0008]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0008, 'ntc2OperationSelect']); raw = res?.[k];
                         if (raw != null) return {state: {ntc2_operation_mode: NTC2_OPERATION_INV[raw] ?? raw}};
                         break;
                     case 'ntc1_relay_auto_temp':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0009]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0009, 'ntc1RelayAutoTemp']); raw = res?.[k];
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*10)/10; return {state: {ntc1_relay_auto_temp: val}};
@@ -477,7 +405,6 @@ const tzLocal = {
                         break;
                     case 'ntc2_relay_auto_temp':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000A]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000A, 'ntc2RelayAutoTemp']); raw = res?.[k];
                         if (typeof raw === 'number' && raw !== -32768 && raw !== 0x8000) {
                             val = Math.round((raw/100)*10)/10; return {state: {ntc2_relay_auto_temp: val}};
@@ -485,43 +412,35 @@ const tzLocal = {
                         break;
                     case 'override_option':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000B]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000B, 'overrideOption']); raw = res?.[k];
                         if (raw != null) return {state: {override_option: OVERRIDE_OPTION_INV[raw] ?? raw}};
                         break;
                     case 'ntc1_calibration':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0004]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0004, 'NTCCalibration1']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc1_calibration: raw}};
                         break;
                     case 'ntc2_calibration':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x0005]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x0005, 'NTCCalibration2']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc2_calibration: raw}};
                         break;
                     case 'ntc1_temp_hysteresis':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000C]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000C, 'ntc1TempHysterisis']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc1_temp_hysteresis: raw}};
                         break;
                     case 'ntc2_temp_hysteresis':
                         res = await entity.read(PRIVATE_CLUSTER_ID, [0x000D]);
-                        logWarn(`read 0x04E0 keys=${Object.keys(res||{}).join(',')}`);
                         k = pick(res, [0x000D, 'ntc2TempHysterisis']); raw = res?.[k];
                         if (typeof raw === 'number') return {state: {ntc2_temp_hysteresis: raw}};
                         break;
                 }
             } catch (err) {
-                // eslint-disable-next-line no-console
-                logWarn(`get ${key} failed: ${err}`);
+                throw new Error(`Failed to read ${key}: ${err.message}`);
             }
         },
         convertSet: async (entity, key, value, meta) => {
-            // eslint-disable-next-line no-console
-            logWarn(`set ${key} -> ${value}`);
             let payload; let result;
             switch (key) {
                 case 'ntc1_sensor_type':
@@ -579,13 +498,9 @@ const tzLocal = {
     },
 };
 
-// Use modernExtend for on/off (includes get+set and exposure)
-
-// Global polling setup - start immediately for all devices
+// Global polling setup
 const g = globalThis;
 g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
-// eslint-disable-next-line no-console
-logWarn('CONVERTER MODULE LOADED - global poll map initialized');
 
 // Export as array per docs
 export default [
@@ -596,19 +511,11 @@ export default [
         description: 'Namron Zigbee 30A relay (numeric-ID external converter)',
         extend: [m.onOff({powerOnBehavior: true})],
         fromZigbee: [
-            // Parsers (on_off_num deliberately omitted - modernExtend handles it)
             fzLocal.device_temp_num,
             fzLocal.temp_measurement_num,
             fzLocal.private_04e0_num,
-            fzLocal.electrical_num,  // Supplement modernExtend for manual reads
-            fzLocal.metering_num,     // Supplement modernExtend for manual reads
-            // Debuggers
-            fzLocal.debug_0006,
-            fzLocal.debug_0002,
-            fzLocal.debug_0402,
-            fzLocal.debug_04E0,
-            fzLocal.debug_0B04,
-            fzLocal.debug_0702,
+            fzLocal.electrical_num,
+            fzLocal.metering_num,
         ],
     toZigbee: [tzLocal.get_attribute, tzLocal.set_private_attribute],
         exposes: [
@@ -623,35 +530,35 @@ export default [
             e.numeric('ntc2_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC2 temperature'),
             e.binary('water_sensor', ea.STATE | ea.STATE_GET, true, false).withDescription('External water sensor (true=water detected)'),
             e.enum('ntc1_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))
-                .withDescription('Select NTC type for probe #1 (set r1–r6 to enable reporting).'),
+                .withDescription('Select NTC probe type for temperature sensor #1'),
             e.enum('ntc2_sensor_type', ea.ALL, Object.keys(NTC_TYPE_MAP))
-                .withDescription('Select NTC type for probe #2 (set r1–r6 to enable reporting).'),
+                .withDescription('Select NTC probe type for temperature sensor #2'),
             e.enum('water_alarm_relay_action', ea.STATE_SET | ea.STATE_GET, Object.keys(WATER_RELAY_ACTION_MAP))
-                .withDescription('Relay behaviour when water alarm triggers.'),
+                .withDescription('How should the relay react when water sensor detects a leak?'),
             e.enum('ntc1_operation_mode', ea.STATE_SET | ea.STATE_GET, Object.keys(NTC1_OPERATION_MAP))
-                .withDescription('Manufacturer-defined operating profile for NTC1.'),
+                .withDescription('How should relay react to NTC1 temperature? (Hot = above threshold, Cold = below threshold)'),
             e.enum('ntc2_operation_mode', ea.STATE_SET | ea.STATE_GET, Object.keys(NTC2_OPERATION_MAP))
-                .withDescription('Manufacturer-defined operating profile for NTC2.'),
+                .withDescription('How should relay react to NTC2 temperature? (Hot = above threshold, Cold = below threshold)'),
             e.numeric('ntc1_relay_auto_temp', ea.STATE_SET | ea.STATE_GET).withUnit('°C')
-                .withDescription('Relay trigger temperature for probe #1 (°C).'),
+                .withDescription('Temperature threshold for NTC1 relay control (0-100°C, works with ntc1_operation_mode)'),
             e.numeric('ntc2_relay_auto_temp', ea.STATE_SET | ea.STATE_GET).withUnit('°C')
-                .withDescription('Relay trigger temperature for probe #2 (°C).'),
+                .withDescription('Temperature threshold for NTC2 relay control (0-100°C, works with ntc2_operation_mode)'),
             e.enum('override_option', ea.STATE_SET | ea.STATE_GET, Object.keys(OVERRIDE_OPTION_MAP))
-                .withDescription('Select which condition has priority when multiple triggers occur.'),
+                .withDescription('Which condition wins if both water alarm and temperature trigger at the same time?'),
             e.numeric('ntc1_calibration', ea.STATE_SET | ea.STATE_GET).withUnit('°C')
-                .withDescription('Calibration offset applied to NTC1.'),
+                .withDescription('Temperature calibration offset for NTC1 (-10 to +10°C)'),
             e.numeric('ntc2_calibration', ea.STATE_SET | ea.STATE_GET).withUnit('°C')
-                .withDescription('Calibration offset applied to NTC2.'),
+                .withDescription('Temperature calibration offset for NTC2 (-10 to +10°C)'),
             e.numeric('ntc1_temp_hysteresis', ea.STATE_SET | ea.STATE_GET).withUnit('°C')
-                .withDescription('Hysteresis for NTC1 control logic.'),
+                .withDescription('Temperature hysteresis for NTC1 to prevent rapid switching (-10 to +10°C)'),
             e.numeric('ntc2_temp_hysteresis', ea.STATE_SET | ea.STATE_GET).withUnit('°C')
-                .withDescription('Hysteresis for NTC2 control logic.'),
+                .withDescription('Temperature hysteresis for NTC2 to prevent rapid switching (-10 to +10°C)'),
             e.binary('water_condition_alarm', ea.STATE, true, false)
-                .withDescription('Water alarm condition flag.'),
+                .withDescription('Water leak alarm status (true=alarm active)'),
             e.binary('ntc_condition_alarm', ea.STATE, true, false)
-                .withDescription('NTC temperature alarm condition flag.'),
+                .withDescription('NTC temperature alarm status (true=alarm active)'),
             e.binary('is_execute_condition', ea.STATE, true, false)
-                .withDescription('Indicates if configured condition will execute.'),
+                .withDescription('Indicates if current conditions will trigger relay action'),
         ],
         meta: {configureKey: 1},
         configure: async (device, coordinatorEndpoint, logger) => {
@@ -769,36 +676,16 @@ export default [
             
             L.info('[Namron4512785] IMPORTANT: Set ntc1_sensor_type and ntc2_sensor_type (r1-r6) to enable temperature reporting!');
         },
-        // Add light polling to keep values fresh if the device doesn't report often
         onEvent: async (type, data, device) => {
-            // Z2M 2.6+ may pass event as object: {type, data, device}
             let eventType = type;
-            let eventData = data;
             let eventDevice = device;
             
-            // Check if first arg is an object with type/data/device properties
             if (typeof type === 'object' && type !== null && 'type' in type) {
                 eventType = type.type;
-                eventData = type.data;
                 eventDevice = type.device;
             }
             
-            // eslint-disable-next-line no-console
-            logWarn(`*** onEvent CALLED *** type=${eventType} device=${eventDevice?.ieeeAddr || 'NO_DEVICE'} data=${JSON.stringify(eventData || {})}`);
-            
-            // CRITICAL: For device-specific events (deviceAnnounce, deviceInterview, deviceJoined),
-            // Z2M may pass device=undefined but include ieee_address in data
-            // Try to use the device parameter first, fall back to options parameter
-            if (!eventDevice || !eventDevice.ieeeAddr) {
-                // For deviceAnnounce specifically, device parameter should be the 3rd arg
-                // Skip global 'start'/'stop' events that truly have no device context
-                if (eventType === 'start' || eventType === 'stop') {
-                    logWarn(`onEvent: global ${eventType} event, skipping`);
-                    return;
-                }
-                
-                // For device events without device object, log and skip (can't poll without device)
-                logWarn(`onEvent: ${eventType} event but no device object available, skipping`);
+            if (!eventDevice || !eventDevice.ieeeAddr || eventType === 'start' || eventType === 'stop') {
                 return;
             }
             
@@ -806,82 +693,26 @@ export default [
             const g = globalThis;
             g.__namron4512785_poll__ = g.__namron4512785_poll__ || new Map();
             
-            // Start polling on device-specific events (deviceAnnounce, etc.) but not 'stop'
             if (eventType === 'stop') {
-                // Stop polling for this device
                 if (g.__namron4512785_poll__.has(key)) {
                     clearInterval(g.__namron4512785_poll__.get(key));
                     g.__namron4512785_poll__.delete(key);
-                    logWarn(`*** STOP POLLING *** ${key}`);
                 }
                 return;
             }
             
-            // Start polling if not already running
-            if (g.__namron4512785_poll__.has(key)) {
-                logWarn(`Already polling ${key}, skipping`);
-                return;
-            }
+            if (g.__namron4512785_poll__.has(key)) return;
             
-            const intervalMs = 60000; // 60s
-            // eslint-disable-next-line no-console
-            logWarn(`*** START POLLING *** ${key} every ${intervalMs/1000}s (triggered by ${eventType})`);
+            const intervalMs = 60000;
             const timer = setInterval(async () => {
                 try {
                     const ep = findBestEndpoint(eventDevice);
                     if (!ep) return;
-                    // eslint-disable-next-line no-console
-                    logWarn(`=== POLLING CYCLE START === ${new Date().toISOString()}`);
                     
-                    // Build state object from reads
-                    const state = {};
-                    
-                    // Read NTC1 temperature (standard cluster 0x0402)
-                    try {
-                        const tempRes = await ep.read('msTemperatureMeasurement', [0x0000]);
-                        logWarn(`POLL ntc1:`, JSON.stringify(tempRes));
-                        if (tempRes && tempRes.measuredValue !== null && tempRes.measuredValue !== undefined) {
-                            const raw = tempRes.measuredValue;
-                            if (raw !== -32768 && raw !== 0x8000) {
-                                state.ntc1_temperature = raw / 100;
-                            }
-                        }
-                    } catch (e) {
-                        logWarn(`POLL ntc1 error: ${e}`);
-                    }
-                    
-                    // Read NTC2 temp + water sensor (private cluster 0x04E0)
-                    try {
-                        const waterRes = await ep.read(0x04E0, [0x0000, 0x0003]);
-                        logWarn(`POLL ntc2/water:`, JSON.stringify(waterRes));
-                        // NTC2 temperature (attr 0x0000)
-                        if (waterRes && waterRes[0] !== undefined && waterRes[0] !== null) {
-                            const raw = waterRes[0];
-                            if (raw !== 0 && raw !== -32768 && raw !== 0x8000) {
-                                state.ntc2_temperature = raw / 100;
-                            }
-                        }
-                        // Water sensor (attr 0x0003)
-                        if (waterRes && waterRes[3] !== undefined && waterRes[3] !== null) {
-                            state.water_sensor = waterRes[3] === 1;
-                        }
-                    } catch (e) {
-                        logWarn(`POLL ntc2/water error: ${e}`);
-                    }
-                    
-                    // Publish state update if we got any values
-                    if (Object.keys(state).length > 0) {
-                        logWarn(`POLL publishing state:`, JSON.stringify(state));
-                        // Trigger state update by calling the device's publishState if available
-                        // Note: This is a workaround since onEvent doesn't have direct publish access
-                        // The values should appear after next MQTT poll cycle
-                        eventDevice.save();
-                    }
-                    
-                    logWarn(`=== POLLING CYCLE END ===`);
+                    await ep.read('msTemperatureMeasurement', [0x0000]);
+                    await ep.read(0x04E0, [0x0000, 0x0003]);
                 } catch (e) {
-                    // eslint-disable-next-line no-console
-                    logWarn(`poll error: ${e}`);
+                    // Polling errors are non-critical
                 }
             }, intervalMs);
             g.__namron4512785_poll__.set(key, timer);

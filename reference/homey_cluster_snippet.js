@@ -1,3 +1,20 @@
+/* 
+*   Info gained from Elektroimportøren / Namron
+*
+*    Jeg vil tro du ikke får noen data på temperatur siden type NTC sensor ikke er definert. Denne må settes til r1-r6 for å at enheten skal rapportere data
+*
+*    Dette er Cluster oppsettet for Prive Configuration (730) på enheten
+*
+*    r0 = No sensor
+*    r1 = NTC-10K
+*    r2 = NTC-12K
+*    r3 = NTC-15K
+*    r4 = NTC-22K
+*    r5 = NTC-33K
+*    r6 = NTC-47K
+*
+*/
+
 'use strict';
 
 const {ZCLDataTypes, Cluster} = require('zigbee-clusters');

@@ -1,4 +1,7 @@
 {
+  "document": {
+    "about": "This document was generated with help from Google Gemini 3 Pro to provide detailed information about the Zigbee clusters and attributes for the Namron Zigbee Heavy Duty 30A smart plug/relay device. Document origin is 4512785-Cluster-47.pdf and some info recieved from Elektroimportøren / Namron by email"
+  },
   "device_info": {
     "product_name": "Namron Zigbee Heavy Duty 30A",
     "description": "Zigbee smart plug/relay with high current capacity and external sensor support.",

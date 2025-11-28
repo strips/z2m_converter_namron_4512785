@@ -2,8 +2,8 @@
 // Hybrid: modernExtend for onOff + custom numeric parsers with debug logs.
 
 // Version tracking - increment on each significant change
-const CONVERTER_VERSION = '1.2.6'; // Enabled powerOnBehavior setting
-const CONVERTER_BUILD = '2025-11-28-008'; // YYYY-MM-DD-NNN format
+const CONVERTER_VERSION = '1.2.7'; // Fixed energy converter to handle 'currentSummDelivered' key
+const CONVERTER_BUILD = '2025-11-28-009'; // YYYY-MM-DD-NNN format
 
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
@@ -273,7 +273,7 @@ const fzLocal = {
         type: ['attributeReport', 'readResponse'],
         convert: (model, msg) => {
             if (!msg.data) return;
-            const key = pick(msg.data, [0x0000, 'currentSummationDelivered']);
+            const key = pick(msg.data, [0x0000, 'currentSummationDelivered', 'currentSummDelivered']);
             if (key !== undefined) {
                 const raw = msg.data[key];
                 if (typeof raw === 'number') {

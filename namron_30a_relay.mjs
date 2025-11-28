@@ -700,6 +700,21 @@ export default [
                 }]);
             } catch (err) { L.warn(`[Namron4512785] metering rpt failed: ${err}`); }
 
+            // CRITICAL: Configure reporting for cluster 0x0402 (NTC1 temperature)
+            // This is a STANDARD cluster that SHOULD support reporting (unlike private 0x04E0)
+            // Without this, NTC1 temperature won't auto-update in GUI
+            try {
+                await endpoint.configureReporting(0x0402, [{
+                    attribute: 0x0000, // measuredValue (NTC1 temperature)
+                    minimumReportInterval: 15,
+                    maximumReportInterval: 600,
+                    reportableChange: 10, // 0.1°C (raw is ×100)
+                }]);
+                L.info('[Namron4512785] configured reporting for cluster 0x0402 (NTC1 temperature)');
+            } catch (err) { 
+                L.warn(`[Namron4512785] cluster 0x0402 reporting failed: ${err}`); 
+            }
+
             // CRITICAL: Configure reporting for private cluster 0x04E0 (NTC temps, water sensor)
             // Without this, the device may not report temperature/water changes automatically
             try {
@@ -760,12 +775,21 @@ export default [
             }
             
             // eslint-disable-next-line no-console
-            console.warn(`[Namron4512785] *** onEvent CALLED *** type=${eventType} device=${eventDevice?.ieeeAddr || 'NO_DEVICE'}`);
+            console.warn(`[Namron4512785] *** onEvent CALLED *** type=${eventType} device=${eventDevice?.ieeeAddr || 'NO_DEVICE'} data=${JSON.stringify(eventData || {})}`);
             
-            // CRITICAL: Ignore global 'start'/'stop' events that have no device
-            // Only act on device-specific events: 'deviceAnnounce', or when device is present
+            // CRITICAL: For device-specific events (deviceAnnounce, deviceInterview, deviceJoined),
+            // Z2M may pass device=undefined but include ieee_address in data
+            // Try to use the device parameter first, fall back to options parameter
             if (!eventDevice || !eventDevice.ieeeAddr) {
-                console.warn(`[Namron4512785] onEvent: no device (type=${eventType}), skipping`);
+                // For deviceAnnounce specifically, device parameter should be the 3rd arg
+                // Skip global 'start'/'stop' events that truly have no device context
+                if (eventType === 'start' || eventType === 'stop') {
+                    console.warn(`[Namron4512785] onEvent: global ${eventType} event, skipping`);
+                    return;
+                }
+                
+                // For device events without device object, log and skip (can't poll without device)
+                console.warn(`[Namron4512785] onEvent: ${eventType} event but no device object available, skipping`);
                 return;
             }
             

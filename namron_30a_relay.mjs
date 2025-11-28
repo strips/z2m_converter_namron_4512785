@@ -2,8 +2,8 @@
 // Hybrid: modernExtend for onOff + custom numeric parsers with debug logs.
 
 // Version tracking - increment on each significant change
-const CONVERTER_VERSION = '1.2.4'; // Fixed power scaling, removed duplicate exposes, flipped water_sensor logic
-const CONVERTER_BUILD = '2025-11-28-006'; // YYYY-MM-DD-NNN format
+const CONVERTER_VERSION = '1.2.6'; // Enabled powerOnBehavior setting
+const CONVERTER_BUILD = '2025-11-28-008'; // YYYY-MM-DD-NNN format
 
 import reporting from 'zigbee-herdsman-converters/lib/reporting';
 import * as exposes from 'zigbee-herdsman-converters/lib/exposes';
@@ -594,10 +594,7 @@ export default [
         model: '4512785',
         vendor: 'Namron AS',
         description: 'Namron Zigbee 30A relay (numeric-ID external converter)',
-        extend: [
-            m.onOff({powerOnBehavior: false}),
-            m.electricityMeter(),
-        ],
+        extend: [m.onOff({powerOnBehavior: true})],
         fromZigbee: [
             // Parsers (on_off_num deliberately omitted - modernExtend handles it)
             fzLocal.device_temp_num,
@@ -615,7 +612,12 @@ export default [
         ],
     toZigbee: [tzLocal.get_attribute, tzLocal.set_private_attribute],
         exposes: [
-            // Device-specific sensors (voltage/current/power/energy provided by modernExtend)
+            // Electrical measurements with custom scaling
+            e.numeric('voltage', ea.STATE | ea.STATE_GET).withUnit('V').withDescription('RMS voltage'),
+            e.numeric('current', ea.STATE | ea.STATE_GET).withUnit('A').withDescription('RMS current'),
+            e.numeric('power', ea.STATE | ea.STATE_GET).withUnit('W').withDescription('Active power'),
+            e.numeric('energy', ea.STATE | ea.STATE_GET).withUnit('kWh').withDescription('Total energy consumed'),
+            // Device-specific sensors
             e.numeric('device_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('Internal device temperature'),
             e.numeric('ntc1_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC1 temperature'),
             e.numeric('ntc2_temperature', ea.STATE | ea.STATE_GET).withUnit('°C').withDescription('External NTC2 temperature'),

@@ -4,10 +4,10 @@
 
 This is an **external converter** for Zigbee2MQTT (Z2M), enabling the Namron 4512785 (30A relay with NTC temperature probes and water sensor) to work with Z2M. The converter translates between Zigbee cluster messages and Z2M's device state model.
 
-**Current Status:** v1.4.0 - Production-ready, cleaned for Z2M project submission (2025-11-28)
+**Current Status:** Production-ready, upstream submission candidate (2025-11-29)
 
 **Key files:**
-- `namron_30a_relay.mjs` – Main converter (ESM export array format, v1.4.0)
+- `namron_30a_relay.mjs` – Main converter (ESM export array format)
 - `reference/cluster.json` – Original Zigbee cluster/attribute documentation from device manufacturer
 - `reference/4512785-Cluster-47_extra.json` – Enhanced cluster documentation generated with Google Gemini 3 Pro from manufacturer PDF and email correspondence
 - `homey_cluster_snippet.{js,esm.mjs}` – Homey platform custom cluster definition (reference only)
@@ -25,7 +25,7 @@ Converters export an **array** containing device definition objects with:
 - `onEvent` – Optional lifecycle handler (start/stop/deviceAnnounce)
 
 ### Numeric Cluster ID Pattern
-This converter uses **numeric cluster/attribute IDs** (e.g., `0x0006`, `0x0505`) instead of named ones to handle devices with non-standard attribute naming. The `pick()` helper tries both numeric and known string aliases.
+This converter uses **numeric cluster/attribute IDs** (e.g., `0x0006`, `0x0505`) instead of named ones to handle devices with non-standard attribute naming. The `pickKey()` helper tries both numeric and known string aliases.
 
 ### Private Cluster 0x04E0
 Device-specific cluster with 17 attributes controlling:
@@ -54,7 +54,7 @@ Attribute IDs `0x0000`–`0x0010` map to specific settings; see `cluster.json` f
 ### Energy Metering (0x0702)
 - **Current Summation Delivered** (0x0000): Raw **÷100** → kWh (e.g., 28427 → 284.27 kWh)
 - **CRITICAL:** Device sends shortened attribute key `'currentSummDelivered'` NOT `'currentSummationDelivered'`
-- Must check both keys in `pick()` array: `['currentSummDelivered', 'currentSummationDelivered', 0x0000]`
+- Must check both keys in `pickKey()` array: `['currentSummDelivered', 'currentSummationDelivered', 0x0000]`
 - Fixed in v1.2.4 after discovering 28426 kWh display error
 
 ### Water Sensor Logic
@@ -82,13 +82,20 @@ These labels appear in Z2M GUI dropdowns and are defined in `reference/4512785-C
 
 ## Development Workflow
 
+### Recent Changes (2025-11-29)
+- **Refactoring:** Removed version tracking constants (maintained by upstream)
+- **Function renames:** `pick()` → `pickKey()`, `invert()` → `invertMap()` for clarity
+- **Endpoint handling:** Hardcoded to endpoint 1, removed `findBestEndpoint()` function
+- **Polling improvements:** Enhanced global state management with better cleanup and duplicate prevention
+- **Logging cleanup:** Removed verbose device identification logs, simplified configure output
+
 ### Version History
 - **v1.2.3** – Initial working version with basic scaling
 - **v1.2.4** – Fixed power scaling (removed incorrect ÷10), fixed energy key name (`currentSummDelivered`)
 - **v1.2.5** – Added powerOnBehavior support
 - **v1.3.0** – Updated all enum labels with user-friendly descriptions from cluster.json
 - **v1.3.1** – Updated all expose descriptions with detailed cluster documentation
-- **v1.4.0** – Removed debug converters and excessive logging for Z2M submission (2025-11-28)
+- **2025-11-29** – Refactored for upstream submission: removed version tracking, simplified helpers, improved polling
 
 ### Testing Changes
 1. Copy updated `namron_30a_relay.mjs` into Z2M data directory: `data/extension/`
@@ -107,7 +114,7 @@ These labels appear in Z2M GUI dropdowns and are defined in `reference/4512785-C
 
 ### Extending Attributes
 1. Add attribute to `cluster.json` (if new discovery)
-2. Define mapping constants (e.g., `NEW_SETTING_MAP`) and inverse (`invert()`)
+2. Define mapping constants (e.g., `NEW_SETTING_MAP`) and inverse (`invertMap()`)
 3. Add case to `fzLocal.private_04e0_num` converter with `mapAndAssign()`
 4. Add matching case to `tzLocal.set_private_attribute` or `get_attribute`
 5. Add to both `exposes` array and `key` array in toZigbee converter

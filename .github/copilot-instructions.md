@@ -88,6 +88,7 @@ These labels appear in Z2M GUI dropdowns and are defined in `reference/4512785-C
 - **Endpoint handling:** Hardcoded to endpoint 1, removed `findBestEndpoint()` function
 - **Polling improvements:** Enhanced global state management with better cleanup and duplicate prevention
 - **Logging cleanup:** Removed verbose device identification logs, simplified configure output
+- **0x0402 reporting:** Re-enabled custom reporting config for cluster 0x0402 (NTC1 temperature) - confirmed working after retesting. Nov 28 issue was caused by other bugs that have since been fixed.
 
 ### Version History
 - **v1.2.3** – Initial working version with basic scaling

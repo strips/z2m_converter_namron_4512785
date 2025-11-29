@@ -107,16 +107,6 @@ const mkLogger = (logger) => ({
         console.warn(msg);
     },
 });
-const findBestEndpoint = (device) => {
-    const desired = [0x0006, 0x0002, 0x0402, 0x0B04, 0x0702];
-    const eps = device.endpoints || [];
-    const hasCluster = (ep, cid) => {
-        const inputs = ep?.inputClusters || [];
-        return inputs.includes?.(cid) || inputs.includes?.(String(cid));
-    };
-    const byDesired = eps.find((ep) => desired.some((cid) => hasCluster(ep, cid)));
-    return byDesired || device.getEndpoint(1) || eps[0];
-};
 
 // Local numeric-ID fromZigbee converters (accept both numeric and named attributes)
 const fzLocal = {
@@ -517,7 +507,7 @@ export default [
             fzLocal.electrical_num,
             fzLocal.metering_num,
         ],
-    toZigbee: [tzLocal.get_attribute, tzLocal.set_private_attribute],
+        toZigbee: [tzLocal.get_attribute, tzLocal.set_private_attribute],
         exposes: [
             // Electrical measurements with custom scaling
             e.numeric('voltage', ea.STATE | ea.STATE_GET).withUnit('V').withDescription('RMS voltage'),
@@ -560,7 +550,6 @@ export default [
             e.binary('is_execute_condition', ea.STATE, true, false)
                 .withDescription('Indicates if current conditions will trigger relay action'),
         ],
-        meta: {configureKey: 1},
         configure: async (device, coordinatorEndpoint, logger) => {
             const L = mkLogger(logger);
             
@@ -573,9 +562,9 @@ export default [
             L.warn(`[Namron4512785] DEVICE INFO: modelID="${device.modelID}" manufacturerName="${device.manufacturerName}" ieeeAddr=${device.ieeeAddr}`);
             L.warn(`[Namron4512785] DEVICE INFO: endpoints=${device.endpoints.map(ep => ep.ID).join(',')}`);
             
-            const endpoint = findBestEndpoint(device);
+            const endpoint = device.getEndpoint(1);
             if (!endpoint) {
-                L.error('[Namron4512785] no endpoint available on device');
+                L.error('[Namron4512785] endpoint 1 not available on device');
                 return;
             }
             L.info(`[Namron4512785] using endpoint ${endpoint.ID}`);
@@ -706,7 +695,7 @@ export default [
             const intervalMs = 60000;
             const timer = setInterval(async () => {
                 try {
-                    const ep = findBestEndpoint(eventDevice);
+                    const ep = eventDevice.getEndpoint(1);
                     if (!ep) return;
                     
                     await ep.read('msTemperatureMeasurement', [0x0000]);
